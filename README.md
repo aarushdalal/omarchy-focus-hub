@@ -138,48 +138,34 @@ omarchy plugin update daemon0.focus-hub
 ### Main experience
 
 <!-- Future image: assets/showcase/focus_focus.png -->
-<!-- ![Main desktop experience](assets/showcase/focus_focus.png) -->
+![Main desktop experience](assets/showcase/focus_focus.png)
 
 ### Feature gallery
 
 <!-- Future image: assets/showcase/focus_focus.png -->
-<!-- ![focus_focus.png](assets/showcase/focus_focus.png) -->
+![focus_focus.png](assets/showcase/focus_focus.png)
 
 <!-- Future image: assets/showcase/focus_ambience.png -->
-<!-- ![focus_ambience.png](assets/showcase/focus_ambience.png) -->
+![focus_ambience.png](assets/showcase/focus_ambience.png)
 
 <!-- Future image: assets/showcase/focus_apps.png -->
-<!-- ![focus_apps.png](assets/showcase/focus_apps.png) -->
+![focus_apps.png](assets/showcase/focus_apps.png)
 
 <!-- Future image: assets/showcase/focus_stats.png -->
-<!-- ![focus_stats.png](assets/showcase/focus_stats.png) -->
+![focus_stats.png](assets/showcase/focus_stats.png)
 
 <!-- Future image: assets/showcase/focus_websites.png -->
-<!-- ![focus_websites.png](assets/showcase/focus_websites.png) -->
+![focus_websites.png](assets/showcase/focus_websites.png)
 
 <!-- Future image: assets/showcase/feature-06.png -->
-<!-- ![Feature preview 6](assets/showcase/feature-06.png) -->
-
 <!-- Future image: assets/showcase/feature-07.png -->
-<!-- ![Feature preview 7](assets/showcase/feature-07.png) -->
-
 <!-- Future image: assets/showcase/feature-08.png -->
-<!-- ![Feature preview 8](assets/showcase/feature-08.png) -->
-
 <!-- Future image: assets/showcase/feature-09.png -->
-<!-- ![Feature preview 9](assets/showcase/feature-09.png) -->
-
 <!-- Future image: assets/showcase/feature-10.png -->
-<!-- ![Feature preview 10](assets/showcase/feature-10.png) -->
-
 ### Motion and interaction
 
 <!-- Future GIF: assets/showcase/interaction-01.gif -->
-<!-- ![Interaction preview](assets/showcase/interaction-01.gif) -->
-
 <!-- Future GIF: assets/showcase/interaction-02.gif -->
-<!-- ![Transition preview](assets/showcase/interaction-02.gif) -->
-
 ### Video demonstrations
 
 <!-- Future thumbnail: assets/showcase/video-01-thumbnail.png -->
