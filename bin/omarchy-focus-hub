@@ -1,0 +1,1252 @@
+#!/usr/bin/env python3
+"""
+Omarchy Study & Focus Mode
+A strict, distraction-free study session manager for Omarchy / Hyprland.
+Provides tab-level website blocking with notifications, dedicated Permitted Websites (Whitelist)
+and Restricted Websites (Blacklist) management, process-level distraction blocking,
+and native Omarchy popup menus.
+"""
+
+import sys
+import os
+import time
+import json
+import fnmatch
+import signal
+import socket
+import select
+import threading
+import subprocess
+import http.server
+from pathlib import Path
+
+# Paths
+CONFIG_DIR = Path.home() / ".config" / "omarchy"
+CONFIG_FILE = CONFIG_DIR / "study-mode.json"
+RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "omarchy-study-mode"
+STATE_FILE = RUNTIME_DIR / "state.json"
+PID_FILE = RUNTIME_DIR / "daemon.pid"
+
+DEFAULT_BLOCKED_BINARIES = [
+    "steam",
+    "steamwebhelper",
+    "discord",
+    "vesktop",
+    "webcord",
+    "discord-canary",
+    "discord-ptb",
+    "spotify",
+    "spotify-launcher",
+    "telegram-desktop",
+    "lutris",
+    "heroic",
+    "qbittorrent",
+    "transmission-gtk",
+    "prism-launcher",
+    "minecraft",
+    "gamescope",
+    "obs",
+    "vlc"
+]
+
+DEFAULT_ALLOWED_DOMAINS = [
+    "missionjeet.in",
+    "github.com",
+    "stackoverflow.com",
+    "wikipedia.org",
+    "google.com",
+    "google.co.in",
+    "chatgpt.com",
+    "claude.ai",
+    "gemini.google.com",
+    "arxiv.org",
+    "geeksforgeeks.org",
+    "w3schools.com",
+    "developer.mozilla.org",
+    "neetcode.io",
+    "leetcode.com",
+    "coursera.org",
+    "edx.org",
+    "khanacademy.org"
+]
+
+DEFAULT_BLOCKED_DOMAINS = [
+    "youtube.com",
+    "youtu.be",
+    "music.apple.com",
+    "spotify.com",
+    "soundcloud.com",
+    "instagram.com",
+    "reddit.com",
+    "twitter.com",
+    "x.com",
+    "netflix.com",
+    "twitch.tv",
+    "tiktok.com",
+    "facebook.com",
+    "threads.net",
+    "pinterest.com",
+    "discord.com",
+    "web.whatsapp.com",
+    "primevideo.com",
+    "hotstar.com",
+    "crunchyroll.com",
+    "9gag.com",
+    "kick.com"
+]
+
+DEFAULT_BLOCKED_PATTERNS = [
+    "*music.apple.com*",
+    "*spotify*",
+    "*soundcloud*",
+    "*youtube*",
+    "*netflix*",
+    "*twitch*",
+    "*primevideo*",
+    "*hotstar*",
+    "*disney*",
+    "*crunchyroll*",
+    "*anime*",
+    "*discord*",
+    "*whatsapp*",
+    "*telegram*",
+    "*instagram*",
+    "*facebook*",
+    "*twitter*",
+    "*x.com*",
+    "*reddit*",
+    "*tiktok*",
+    "*snapchat*",
+    "*threads*",
+    "*steam*",
+    "*epicgames*",
+    "*lutris*",
+    "*heroic*",
+    "*prism*",
+    "*minecraft*",
+    "*roblox*",
+    "*game*",
+    "*games*",
+    "*wine*",
+    "*proton*",
+    "*qbittorrent*",
+    "*torrent*"
+]
+
+DEFAULT_ALLOWED_APPS = [
+    # Study Browsers & PWAs
+    "brave",
+    "brave-browser",
+    "brave-missionjeet*",
+    "chromium",
+    "firefox",
+    "google-chrome",
+    "zen-browser",
+    
+    # Note-Taking & Flashcards & Docs
+    "obsidian*",
+    "notion*",
+    "logseq*",
+    "typora*",
+    "anki*",
+    "zotero*",
+    
+    # Text Editors & Code
+    "neovim*",
+    "nvim*",
+    "code*",
+    "vscodium*",
+    "zed*",
+    "emacs*",
+    
+    # PDF Readers & Documents
+    "evince*",
+    "zathura*",
+    "okular*",
+    "libreoffice*",
+    "document-viewer*",
+    "calibre*",
+    
+    # Terminal & Calculators & Utilities
+    "foot*",
+    "kitty*",
+    "alacritty*",
+    "ghostty*",
+    "wezterm*",
+    "gnome-terminal*",
+    "kcalc*",
+    "gnome-calculator*",
+    "qalculate*",
+    
+    # Desktop Shell & System Tools (Always Allowed)
+    "org.omarchy.*",
+    "hypr*",
+    "zenity*",
+    "yad*",
+    "rofi*",
+    "wofi*",
+    "polkit*",
+    "xdg-desktop-portal*"
+]
+
+DEFAULT_CONFIG = {
+    "allowed_apps": DEFAULT_ALLOWED_APPS,
+    "allowed_domains": DEFAULT_ALLOWED_DOMAINS,
+    "blocked_domains": DEFAULT_BLOCKED_DOMAINS,
+    "blocked_patterns": DEFAULT_BLOCKED_PATTERNS,
+    "blocked_binaries": DEFAULT_BLOCKED_BINARIES,
+    "strict_website_whitelist": False,
+    "sound_alerts": True,
+    "close_blocked_windows": True,
+    "default_study_mins": 25,
+    "default_break_mins": 5
+}
+
+IMMUNE_PROCESSES = {
+    "brave", "brave-bin", "chromium", "chrome", "firefox", "zen", "zen-bin",
+    "google-chrome", "foot", "quickshell", "hyprland", "omarchy", "fcitx5",
+    "pipewire", "wireplumber", "easyeffects", "systemd", "dbus-daemon", "waybar"
+}
+
+def ensure_dirs():
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_config():
+    ensure_dirs()
+    if not CONFIG_FILE.exists():
+        save_config(DEFAULT_CONFIG)
+        return DEFAULT_CONFIG.copy()
+    try:
+        with open(CONFIG_FILE, "r") as f:
+            data = json.load(f)
+            for k, v in DEFAULT_CONFIG.items():
+                if k not in data:
+                    data[k] = v
+            return data
+    except Exception:
+        return DEFAULT_CONFIG.copy()
+
+def save_config(cfg):
+    ensure_dirs()
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(cfg, f, indent=2)
+
+def load_raw_state():
+    if not STATE_FILE.exists():
+        return None
+    try:
+        with open(STATE_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+def load_state():
+    if not STATE_FILE.exists():
+        return None
+    try:
+        with open(STATE_FILE, "r") as f:
+            state = json.load(f)
+            if state.get("active") and state.get("ends_at", 0) > time.time():
+                return state
+            if state.get("active") and state.get("ends_at", 0) <= time.time():
+                clear_state()
+            return None
+    except Exception:
+        return None
+
+def save_state(state):
+    ensure_dirs()
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f, indent=2)
+
+def record_session_completion(duration_seconds, label):
+    stats_file = CONFIG_DIR / "study-stats.json"
+    today = time.strftime("%Y-%m-%d")
+    stats = {}
+    if stats_file.exists():
+        try:
+            with open(stats_file, "r") as f:
+                stats = json.load(f)
+        except Exception:
+            stats = {}
+    if today not in stats:
+        stats[today] = {"minutes": 0, "sessions": 0}
+    mins_added = max(1, int(round(duration_seconds / 60.0)))
+    stats[today]["minutes"] = stats[today].get("minutes", 0) + mins_added
+    stats[today]["sessions"] = stats[today].get("sessions", 0) + 1
+    try:
+        with open(stats_file, "w") as f:
+            json.dump(stats, f, indent=2)
+    except Exception:
+        pass
+
+def record_completion_event(duration_seconds, label):
+    ensure_dirs()
+    event_file = RUNTIME_DIR / "completion.json"
+    mins = max(1, int(round(duration_seconds / 60.0)))
+    event = {
+        "timestamp": time.time(),
+        "minutes": mins,
+        "label": label,
+        "total_seconds": duration_seconds
+    }
+    try:
+        with open(event_file, "w") as f:
+            json.dump(event, f, indent=2)
+    except Exception:
+        pass
+
+def clear_state(only_if_pid=None):
+    if PID_FILE.exists():
+        try:
+            with open(PID_FILE, "r") as f:
+                cur_pid = int(f.read().strip())
+            if only_if_pid is not None and cur_pid != only_if_pid:
+                return
+        except Exception:
+            pass
+        try:
+            PID_FILE.unlink()
+        except OSError:
+            pass
+    if STATE_FILE.exists():
+        try:
+            STATE_FILE.unlink()
+        except OSError:
+            pass
+
+def format_time_remaining(seconds):
+    seconds = max(0, int(seconds))
+    mins = seconds // 60
+    secs = seconds % 60
+    if mins >= 60:
+        hrs = mins // 60
+        mins = mins % 60
+        return f"{hrs}h {mins}m {secs}s"
+    elif mins > 0:
+        return f"{mins}m {secs:02d}s"
+    else:
+        return f"{secs}s"
+
+def notify(headline, description="", glyph="󰑴", urgency="normal"):
+    cmd = ["omarchy-notification-send", "-g", glyph, "-u", urgency, headline]
+    if description:
+        cmd.append(description)
+    try:
+        subprocess.run(cmd, check=False)
+    except Exception:
+        try:
+            subprocess.run(["notify-send", headline, description], check=False)
+        except Exception:
+            pass
+
+def play_sound(sound_name):
+    cfg = load_config()
+    if not cfg.get("sound_alerts", True):
+        return
+    custom_reward = str(Path.home() / ".config/omarchy/plugins/daemon0.study-focus/sounds/reward.wav")
+    sound_map = {
+        "start": "/usr/share/sounds/freedesktop/stereo/service-login.oga",
+        "complete": custom_reward if os.path.exists(custom_reward) else "/usr/share/sounds/freedesktop/stereo/complete.oga",
+        "break_start": "/usr/share/sounds/freedesktop/stereo/bell.oga",
+        "blocked": "/usr/share/sounds/freedesktop/stereo/dialog-warning.oga"
+    }
+    sound_path = sound_map.get(sound_name, "")
+    if sound_path and os.path.exists(sound_path):
+        for player in ["pw-play", "paplay", "canberra-gtk-play", "aplay"]:
+            if subprocess.run(["which", player], capture_output=True).returncode == 0:
+                if player == "canberra-gtk-play":
+                    subprocess.Popen([player, "-f", sound_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                else:
+                    subprocess.Popen([player, sound_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                break
+
+# ==============================================================================
+# LOCAL HTTP STATUS & NOTIFICATION SERVER
+# ==============================================================================
+
+class StatusHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        state = load_state()
+        cfg = load_config()
+        active = bool(state and state.get("active"))
+        stype = state.get("type", "study") if state else "none"
+        
+        response = {
+            "active": active,
+            "type": stype,
+            "ends_at": state.get("ends_at", 0) if state else 0,
+            "strict_website_whitelist": cfg.get("strict_website_whitelist", False),
+            "allowed_domains": cfg.get("allowed_domains", DEFAULT_ALLOWED_DOMAINS),
+            "blocked_domains": cfg.get("blocked_domains", DEFAULT_BLOCKED_DOMAINS)
+        }
+        
+        body = json.dumps(response).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_POST(self):
+        if self.path == "/notify":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8", errors="ignore")
+            try:
+                data = json.loads(body)
+                headline = data.get("headline", "⛔ Website Restricted")
+                description = data.get("description", "Closed restricted website tab.")
+                glyph = data.get("glyph", "󰅶")
+                urgency = data.get("urgency", "critical")
+                notify(headline, description, glyph=glyph, urgency=urgency)
+                play_sound("blocked")
+            except Exception:
+                pass
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(b'{"status": "ok"}')
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def log_message(self, format, *args):
+        pass
+
+def start_http_status_server():
+    try:
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 29876), StatusHandler)
+        t = threading.Thread(target=server.serve_forever, daemon=True)
+        t.start()
+        return server
+    except Exception:
+        return None
+
+# ==============================================================================
+# WINDOW & TAB ENFORCEMENT
+# ==============================================================================
+
+def get_active_window():
+    try:
+        res = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True)
+        if res.returncode == 0 and res.stdout.strip():
+            return json.loads(res.stdout)
+    except Exception:
+        pass
+    return None
+
+def get_all_windows():
+    try:
+        res = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True)
+        if res.returncode == 0 and res.stdout.strip():
+            return json.loads(res.stdout)
+    except Exception:
+        pass
+    return []
+
+def get_process_comm(pid):
+    try:
+        with open(f"/proc/{pid}/comm", "r") as f:
+            return f.read().strip().lower()
+    except Exception:
+        return ""
+
+def kill_forbidden_binaries(blocked_binaries):
+    for binary in blocked_binaries:
+        if not binary or binary.lower() in IMMUNE_PROCESSES:
+            continue
+        try:
+            subprocess.run(["pkill", "-9", "-f", binary], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+
+def is_window_forbidden(win_class, win_initial_class, win_title, allowed_patterns, blocked_patterns, allowed_domains):
+    w_class = win_class.lower()
+    w_init = win_initial_class.lower()
+    w_title = win_title.lower()
+
+    # 1. System essentials are NEVER blocked
+    system_allow = [
+        "org.omarchy.*",
+        "hypr*",
+        "zenity*",
+        "yad*",
+        "rofi*",
+        "wofi*",
+        "polkit*",
+        "xdg-desktop-portal*"
+    ]
+    for pattern in system_allow:
+        if fnmatch.fnmatch(w_class, pattern.lower()) or fnmatch.fnmatch(w_init, pattern.lower()):
+            return False, "system", "none"
+
+    # 2. Check if explicitly allowed domain is in title/class (e.g. Mission JEET, GitHub, Wikipedia)
+    for dom in allowed_domains:
+        d = dom.replace("*", "").strip().lower()
+        if d and (d in w_class or d in w_title or d.replace(".", " ") in w_title):
+            return False, f"Permitted domain: {dom}", "none"
+
+    is_browser = "brave" in w_class or "chromium" in w_class or "chrome" in w_class or "firefox" in w_class
+    is_pwa = is_browser and ("brave-" in w_class and not w_class.startswith("brave-browser"))
+
+    # 3. Hard Blacklist check
+    for pattern in blocked_patterns:
+        pat = pattern.strip().lower()
+        if not pat:
+            continue
+        keyword = pat.replace("*", "")
+        if fnmatch.fnmatch(w_class, pat) or fnmatch.fnmatch(w_init, pat) or keyword in w_class:
+            return True, f"Blacklisted app: {pattern}", "window"
+        if is_browser and keyword in w_title:
+            if is_pwa:
+                return True, f"Blacklisted PWA: {w_title}", "window"
+            else:
+                return True, f"Blacklisted Tab: {w_title}", "tab"
+
+    # 4. Whitelist check
+    for pattern in allowed_patterns:
+        pat = pattern.strip().lower()
+        if not pattern:
+            continue
+        if fnmatch.fnmatch(w_class, pat) or fnmatch.fnmatch(w_init, pat):
+            return False, "allowed", "none"
+
+    return True, "Not on study whitelist", "window"
+
+def enforce_close_tab_or_window(address, action_type="window", pid=None):
+    if action_type == "tab":
+        try:
+            subprocess.run(["wtype", "-M", "ctrl", "w", "-m", "ctrl"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+    elif action_type == "window" and address:
+        cmd_close = f'hl.dsp.window.close({{ window = "address:{address}" }})'
+        subprocess.run(["hyprctl", "dispatch", cmd_close], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        if pid and pid > 1000:
+            comm = get_process_comm(pid)
+            if comm and comm not in IMMUNE_PROCESSES and "brave" not in comm and "chrome" not in comm:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except Exception:
+                    pass
+
+# ==============================================================================
+# DAEMON LOGIC
+# ==============================================================================
+
+def run_daemon(duration_seconds, session_type="study", label="Focus Session", paused_study=None):
+    now = time.time()
+    ends_at = now + duration_seconds
+    pid = os.getpid()
+
+    state = {
+        "active": True,
+        "type": session_type,
+        "label": label,
+        "started_at": now,
+        "ends_at": ends_at,
+        "total_seconds": duration_seconds,
+        "pid": pid,
+        "paused_study": paused_study
+    }
+    save_state(state)
+
+    with open(PID_FILE, "w") as f:
+        f.write(str(pid))
+
+    def sig_handler(signum, frame):
+        clear_state(only_if_pid=pid)
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, sig_handler)
+    signal.signal(signal.SIGINT, sig_handler)
+
+    glyph = "󰑴" if session_type == "study" else "☕"
+    formatted_time = format_time_remaining(duration_seconds)
+    if session_type == "break":
+        if paused_study and paused_study.get("remaining_seconds", 0) > 0:
+            p_rem = format_time_remaining(paused_study["remaining_seconds"])
+            p_lbl = paused_study.get("label", "Study Session")
+            notify(f"☕ {label} Started", f"Break for {formatted_time}. Paused: '{p_lbl}' ({p_rem} remaining).", glyph="☕")
+        else:
+            notify(f"☕ {label} Started", f"Break duration: {formatted_time}. Enjoy your breather!", glyph="☕")
+    else:
+        notify(f"🎯 {label} Started", f"Duration: {formatted_time}. Tab & App restrictions active.", glyph=glyph)
+    
+    play_sound("start" if session_type == "study" else "break_start")
+
+    http_srv = start_http_status_server()
+
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/run/user/1000")
+    his = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
+    sock_path = f"{runtime_dir}/hypr/{his}/.socket2.sock"
+
+    sock = None
+    if os.path.exists(sock_path):
+        try:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(sock_path)
+            sock.setblocking(False)
+        except Exception:
+            sock = None
+
+    last_proc_check = 0
+    last_win_check = 0
+    blocked_notif_cache = {}
+
+    if session_type == "study":
+        cfg = load_config()
+        kill_forbidden_binaries(cfg.get("blocked_binaries", DEFAULT_BLOCKED_BINARIES))
+
+    try:
+        while time.time() < ends_at:
+            time_left = ends_at - time.time()
+            if time_left <= 0:
+                break
+
+            cfg = load_config()
+            allowed_apps = cfg.get("allowed_apps", DEFAULT_ALLOWED_APPS)
+            blocked_patterns = cfg.get("blocked_patterns", DEFAULT_BLOCKED_PATTERNS)
+            blocked_binaries = cfg.get("blocked_binaries", DEFAULT_BLOCKED_BINARIES)
+            allowed_domains = cfg.get("allowed_domains", DEFAULT_ALLOWED_DOMAINS)
+            close_blocked = cfg.get("close_blocked_windows", True)
+
+            # 1. Kill standalone distraction processes
+            if session_type == "study" and time.time() - last_proc_check >= 0.5:
+                last_proc_check = time.time()
+                kill_forbidden_binaries(blocked_binaries)
+
+            # 2. Window & Tab Enforcement
+            if sock and session_type == "study":
+                r, _, _ = select.select([sock], [], [], min(0.2, time_left))
+                if r:
+                    try:
+                        data = sock.recv(4096).decode("utf-8", errors="ignore")
+                        if data:
+                            check_and_enforce_windows(allowed_apps, blocked_patterns, allowed_domains, close_blocked, blocked_notif_cache)
+                    except Exception:
+                        pass
+            else:
+                time.sleep(min(0.2, time_left))
+
+            if time.time() - last_win_check >= 0.3 and session_type == "study":
+                last_win_check = time.time()
+                check_and_enforce_windows(allowed_apps, blocked_patterns, allowed_domains, close_blocked, blocked_notif_cache)
+
+        if session_type == "study":
+            record_session_completion(duration_seconds, label)
+            record_completion_event(duration_seconds, label)
+            notify("🎉 Study Session Complete!", f"Awesome job! Finished {label} ({formatted_time}). All restrictions lifted.", glyph="🎉")
+            play_sound("complete")
+            clear_state()
+        else:
+            cfg = load_config()
+            default_mins = cfg.get("default_study_mins", 25)
+            if paused_study and paused_study.get("remaining_seconds", 0) > 0:
+                rem_secs = paused_study["remaining_seconds"]
+                p_label = paused_study.get("label", "Study Session")
+                notify("🔔 Break Finished!", f"Break complete! Resuming '{p_label}' ({format_time_remaining(rem_secs)} left).", glyph="🎯", urgency="critical")
+                play_sound("break_start")
+                # Seamlessly auto-resume the paused study session!
+                start_session(rem_secs / 60.0, session_type="study", label=p_label)
+                return
+            else:
+                notify("🔔 Break Finished!", f"Break complete! Resuming Study Focus ({default_mins}m).", glyph="🎯", urgency="critical")
+                play_sound("break_start")
+                # Seamlessly resume with default study session!
+                start_session(default_mins, session_type="study", label="Pomodoro Focus")
+                return
+
+    finally:
+        if sock:
+            try:
+                sock.close()
+            except Exception:
+                pass
+
+def check_and_enforce_windows(allowed_apps, blocked_patterns, allowed_domains, close_blocked, notif_cache):
+    windows = get_all_windows()
+    now = time.time()
+
+    for k in list(notif_cache.keys()):
+        if now - notif_cache[k] > 6.0:
+            del notif_cache[k]
+
+    for win in windows:
+        addr = win.get("address", "")
+        w_class = win.get("class", "")
+        w_init_class = win.get("initialClass", "")
+        w_title = win.get("title", "")
+        pid = win.get("pid")
+
+        forbidden, reason, action_type = is_window_forbidden(w_class, w_init_class, w_title, allowed_apps, blocked_patterns, allowed_domains)
+
+        if forbidden and close_blocked:
+            app_key = w_title if action_type == "tab" else (w_class or w_init_class or str(pid))
+            
+            if app_key not in notif_cache:
+                notif_cache[app_key] = now
+                app_name = w_title or w_class or "Application"
+                if len(app_name) > 35:
+                    app_name = app_name[:32] + "..."
+                msg = f"Closed forbidden tab: '{app_name}'" if action_type == "tab" else f"Blocked: '{app_name}' is restricted!"
+                notify("⛔ Focus Restriction", msg, glyph="󰅶", urgency="critical")
+                play_sound("blocked")
+
+            enforce_close_tab_or_window(addr, action_type=action_type, pid=pid)
+
+# ==============================================================================
+# SESSION & MENU CONTROLS
+# ==============================================================================
+
+def start_session(minutes, session_type="study", label="Study Session", paused_study=None):
+    current_state = load_raw_state()
+    if session_type == "break" and not paused_study:
+        if current_state and current_state.get("active") and current_state.get("type") == "study":
+            rem = max(0, int(current_state.get("ends_at", 0) - time.time()))
+            if rem > 0:
+                paused_study = {
+                    "remaining_seconds": rem,
+                    "total_seconds": current_state.get("total_seconds", 1500),
+                    "label": current_state.get("label", "Study Session"),
+                    "started_at": current_state.get("started_at", time.time())
+                }
+        elif current_state and current_state.get("paused_study"):
+            paused_study = current_state.get("paused_study")
+
+    stop_existing_daemon(clear=False)
+    seconds = int(float(minutes) * 60)
+    
+    script_path = os.path.abspath(__file__)
+    cmd = [sys.executable, script_path, "daemon-exec", str(seconds), session_type, label]
+    if paused_study:
+        cmd.extend(["--paused-study", json.dumps(paused_study)])
+    subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, preexec_fn=os.setpgrp)
+
+def stop_existing_daemon(clear=True):
+    my_pid = os.getpid()
+    if PID_FILE.exists():
+        try:
+            with open(PID_FILE, "r") as f:
+                pid = int(f.read().strip())
+            if pid != my_pid:
+                os.kill(pid, signal.SIGTERM)
+                time.sleep(0.1)
+        except Exception:
+            pass
+    if clear:
+        clear_state(only_if_pid=my_pid)
+
+def resume_study_session():
+    current_state = load_raw_state()
+    cfg = load_config()
+    default_mins = cfg.get("default_study_mins", 25)
+    if current_state and current_state.get("paused_study"):
+        ps = current_state["paused_study"]
+        rem_secs = ps.get("remaining_seconds", default_mins * 60)
+        p_label = ps.get("label", "Study Session")
+        notify("🎯 Focus Resumed", f"Back to '{p_label}' ({format_time_remaining(rem_secs)} remaining).", glyph="󰑴")
+        start_session(rem_secs / 60.0, session_type="study", label=p_label)
+    elif current_state and current_state.get("active") and current_state.get("type") == "break":
+        notify("Starting Study Focus", f"Starting {default_mins}m Pomodoro Focus session.", glyph="󰑴")
+        start_session(default_mins, session_type="study", label="Pomodoro Focus")
+    else:
+        start_session(default_mins, session_type="study", label="Pomodoro Focus")
+
+def extend_session(minutes=10):
+    state = load_state()
+    if not state or not state.get("active"):
+        notify("No Active Session", "There is no running study session to extend.", glyph="󰢌")
+        return
+    
+    old_ends = state.get("ends_at", time.time())
+    new_ends = old_ends + (minutes * 60)
+    state["ends_at"] = new_ends
+    state["total_seconds"] = state.get("total_seconds", 0) + (minutes * 60)
+    save_state(state)
+    
+    remaining = format_time_remaining(new_ends - time.time())
+    notify("⏳ Session Extended", f"+{minutes} mins added. Remaining: {remaining}", glyph="󰑴")
+
+def menu_select(prompt, options, width=560, maxheight=520):
+    cmd = ["omarchy-menu-select", prompt, "--", "--width", str(width), "--maxheight", str(maxheight)]
+    try:
+        p = subprocess.run(cmd, input="\n".join(options), text=True, capture_output=True)
+        if p.returncode == 0:
+            return p.stdout.strip()
+    except Exception as e:
+        print(f"Error invoking omarchy-menu-select: {e}", file=sys.stderr)
+    return None
+
+def menu_input(prompt, width=460):
+    cmd = ["omarchy-menu-input", prompt, "--width", str(width)]
+    try:
+        p = subprocess.run(cmd, text=True, capture_output=True)
+        if p.returncode == 0:
+            return p.stdout.strip()
+    except Exception as e:
+        print(f"Error invoking omarchy-menu-input: {e}", file=sys.stderr)
+    return None
+
+def add_allowed_app(pattern):
+    pattern = pattern.strip()
+    if not pattern:
+        return
+    cfg = load_config()
+    if pattern not in cfg["allowed_apps"]:
+        cfg["allowed_apps"].append(pattern)
+        save_config(cfg)
+        notify("App Permitted", f"Added '{pattern}' to allowed apps list.", glyph="󰄬")
+    else:
+        notify("Already Allowed", f"'{pattern}' is already on the allowed list.", glyph="󰢌")
+
+def remove_allowed_app(pattern):
+    cfg = load_config()
+    if pattern in cfg["allowed_apps"]:
+        cfg["allowed_apps"].remove(pattern)
+        save_config(cfg)
+        notify("App Removed", f"Removed '{pattern}' from allowed apps.", glyph="󰭌")
+
+def add_allowed_domain(domain):
+    domain = domain.strip().lower()
+    if not domain:
+        return
+    cfg = load_config()
+    if domain not in cfg["allowed_domains"]:
+        cfg["allowed_domains"].append(domain)
+        save_config(cfg)
+        notify("Website Permitted", f"Added '{domain}' to Permitted Websites.", glyph="󰄬")
+
+def remove_allowed_domain(domain):
+    cfg = load_config()
+    if domain in cfg["allowed_domains"]:
+        cfg["allowed_domains"].remove(domain)
+        save_config(cfg)
+        notify("Website Removed", f"Removed '{domain}' from Permitted Websites.", glyph="󰭌")
+
+def add_blocked_domain(domain):
+    domain = domain.strip().lower()
+    if not domain:
+        return
+    cfg = load_config()
+    if domain not in cfg["blocked_domains"]:
+        cfg["blocked_domains"].append(domain)
+        save_config(cfg)
+        notify("Website Blacklisted", f"Added '{domain}' to Restricted Websites.", glyph="󰄬")
+
+def remove_blocked_domain(domain):
+    cfg = load_config()
+    if domain in cfg["blocked_domains"]:
+        cfg["blocked_domains"].remove(domain)
+        save_config(cfg)
+        notify("Website Unblocked", f"Removed '{domain}' from Restricted Websites.", glyph="󰭌")
+
+def allow_current_window():
+    win = get_active_window()
+    if not win:
+        notify("No Active Window", "Could not detect active window to allow.", glyph="󰢌")
+        return
+    w_class = win.get("class") or win.get("initialClass")
+    if w_class:
+        add_allowed_app(w_class)
+    else:
+        notify("Unable to Identify", "Active window does not have a valid class name.", glyph="󰢌")
+
+def manage_allowed_apps_menu():
+    while True:
+        cfg = load_config()
+        allowed = cfg.get("allowed_apps", [])
+        
+        options = [
+            "󰐊\t➕ Allow Currently Focused App\tAdd active window to whitelist",
+            "󰏫\t➕ Add Custom App Pattern...\tType a pattern like 'vlc*' or 'zoom*'",
+            "󰭌\t➖ Remove an Allowed App\tSelect an app to remove from whitelist",
+            "\t🔄 Reset Allowed Apps to Default\tRestore standard study apps list",
+            "󰌌\t📋 View All Allowed Apps\tDisplay complete permitted list",
+            "󰌑\t↩ Back to Main Menu\tReturn to focus options"
+        ]
+        
+        sel = menu_select("Manage Allowed Study Apps", options, width=560)
+        if not sel:
+            break
+            
+        action = sel.split("\t")[0]
+        if "➕ Allow Currently Focused App" in action:
+            allow_current_window()
+        elif "➕ Add Custom App Pattern" in action:
+            pat = menu_input("Enter app name or pattern to allow:", width=520)
+            if pat:
+                add_allowed_app(pat)
+        elif "➖ Remove an Allowed App" in action:
+            if not allowed:
+                notify("Empty List", "Allowed apps list is empty.", glyph="󰢌")
+                continue
+            rem_options = [f"󰭌\t{app}\tRemove this application" for app in allowed]
+            rem_options.append("󰌑\tCancel\tDo not remove anything")
+            rem_sel = menu_select("Select App to Remove", rem_options, width=540)
+            if rem_sel and not "Cancel" in rem_sel:
+                app_to_remove = rem_sel.split("\t")[0]
+                remove_allowed_app(app_to_remove)
+        elif "🔄 Reset Allowed Apps to Default" in action:
+            cfg["allowed_apps"] = DEFAULT_ALLOWED_APPS.copy()
+            save_config(cfg)
+            notify("List Reset", "Allowed apps reset to default study tools.", glyph="󰄬")
+        elif "📋 View All Allowed Apps" in action:
+            view_options = [f"󰄬\t{app}\tPermitted in study mode" for app in allowed]
+            view_options.append("󰌑\tClose\tDismiss list")
+            menu_select("Permitted Study Apps", view_options, width=540)
+        elif "↩ Back to Main Menu" in action:
+            break
+
+# ==============================================================================
+# DEDICATED PERMITTED WEBSITES (WHITELIST) MENU
+# ==============================================================================
+
+def manage_permitted_websites_menu():
+    while True:
+        cfg = load_config()
+        domains = cfg.get("allowed_domains", DEFAULT_ALLOWED_DOMAINS)
+        strict_mode = cfg.get("strict_website_whitelist", False)
+        mode_label = "Enabled (Strict Whitelist Only)" if strict_mode else "Disabled (Standard Filter)"
+
+        options = [
+            "󰏫\t➕ Add Permitted Website Domain...\tEnter domain like 'coursera.org', 'mit.edu'",
+            "󰭌\t➖ Remove Permitted Website\tRemove domain from whitelist",
+            f"🔒\tToggle Strict Whitelist Mode ({mode_label})\tOnly permitted websites can be opened",
+            "\t🔄 Reset Permitted Websites to Default\tRestore standard study websites",
+            "󰌌\t📋 View All Permitted Websites\tDisplay complete permitted websites list",
+            "󰌑\t↩ Back to Main Menu\tReturn to focus options"
+        ]
+        
+        sel = menu_select("Permitted Websites (Whitelist)", options, width=600)
+        if not sel:
+            break
+            
+        action = sel.split("\t")[0]
+        if "➕ Add Permitted Website Domain" in action:
+            dom = menu_input("Enter website domain to permit (e.g. khanacademy.org):", width=520)
+            if dom:
+                add_allowed_domain(dom)
+        elif "➖ Remove Permitted Website" in action:
+            if not domains:
+                notify("Empty List", "Permitted websites list is empty.", glyph="󰢌")
+                continue
+            rem_options = [f"󰭌\t{d}\tRemove from permitted list" for d in domains]
+            rem_options.append("󰌑\tCancel\tKeep permitted")
+            rem_sel = menu_select("Select Website to Remove", rem_options, width=540)
+            if rem_sel and not "Cancel" in rem_sel:
+                dom_to_remove = rem_sel.split("\t")[0]
+                remove_allowed_domain(dom_to_remove)
+        elif "Toggle Strict Whitelist Mode" in action:
+            cfg["strict_website_whitelist"] = not cfg.get("strict_website_whitelist", False)
+            save_config(cfg)
+            new_status = "STRICT (Only permitted websites allowed)" if cfg["strict_website_whitelist"] else "STANDARD (Blacklisted sites blocked)"
+            notify("Website Filter Mode", f"Mode set to: {new_status}", glyph="🔒")
+        elif "🔄 Reset Permitted Websites to Default" in action:
+            cfg["allowed_domains"] = DEFAULT_ALLOWED_DOMAINS.copy()
+            save_config(cfg)
+            notify("List Reset", "Permitted websites reset to defaults.", glyph="󰄬")
+        elif "📋 View All Permitted Websites" in action:
+            view_options = [f"󰄬\t{d}\tAlways permitted during study" for d in domains]
+            view_options.append("󰌑\tClose\tDismiss list")
+            menu_select("Permitted Websites (Whitelist)", view_options, width=540)
+        elif "↩ Back to Main Menu" in action:
+            break
+
+# ==============================================================================
+# RESTRICTED WEBSITES (BLACKLIST) MENU
+# ==============================================================================
+
+def manage_blocked_websites_menu():
+    while True:
+        cfg = load_config()
+        domains = cfg.get("blocked_domains", DEFAULT_BLOCKED_DOMAINS)
+        
+        options = [
+            "󰏫\t➕ Block a Website Domain...\tType a domain like 'reddit.com', 'youtube.com'",
+            "󰭌\t➖ Remove Website from Blacklist\tUnblock a restricted website",
+            "\t🔄 Reset Blocked Websites to Default\tRestore standard study blacklist",
+            "󰌌\t📋 View All Blocked Websites\tDisplay complete restricted site list",
+            "󰌑\t↩ Back to Main Menu\tReturn to focus options"
+        ]
+        
+        sel = menu_select("Restricted Websites (Blacklist)", options, width=560)
+        if not sel:
+            break
+            
+        action = sel.split("\t")[0]
+        if "➕ Block a Website Domain" in action:
+            dom = menu_input("Enter domain to block (e.g. reddit.com, twitch.tv):", width=520)
+            if dom:
+                add_blocked_domain(dom)
+        elif "➖ Remove Website from Blacklist" in action:
+            if not domains:
+                notify("Empty List", "Blocked domains list is empty.", glyph="󰢌")
+                continue
+            rem_options = [f"󰭌\t{d}\tUnblock this website" for d in domains]
+            rem_options.append("󰌑\tCancel\tKeep blocked")
+            rem_sel = menu_select("Select Website to Unblock", rem_options, width=540)
+            if rem_sel and not "Cancel" in rem_sel:
+                dom_to_remove = rem_sel.split("\t")[0]
+                remove_blocked_domain(dom_to_remove)
+        elif "🔄 Reset Blocked Websites to Default" in action:
+            cfg["blocked_domains"] = DEFAULT_BLOCKED_DOMAINS.copy()
+            save_config(cfg)
+            notify("List Reset", "Website blacklist reset to standard defaults.", glyph="󰄬")
+        elif "📋 View All Blocked Websites" in action:
+            view_options = [f"⛔\t{d}\tTab closed automatically during study" for d in domains]
+            view_options.append("󰌑\tClose\tDismiss list")
+            menu_select("Restricted Websites (Tab Level)", view_options, width=540)
+        elif "↩ Back to Main Menu" in action:
+            break
+
+# ==============================================================================
+# MAIN POPUP MENU
+# ==============================================================================
+
+def show_main_menu():
+    state = load_state()
+    cfg = load_config()
+
+    if state and state.get("active"):
+        remaining = format_time_remaining(state.get("ends_at", 0) - time.time())
+        label = state.get("label", "Focus Session")
+        
+        options = [
+            f"󰄬\t⏳ Status: {remaining} remaining\t{label} in progress",
+            "󰓛\t🛑 End Session Now\tStop timer and lift restrictions",
+            "󱓞\t➕ Extend Session (+10 mins)\tAdd more focus time",
+            "󰐊\t☕ Take a Short Break (5 mins)\tPause and relax",
+            "󰐊\t🌴 Take a Long Break (15 mins)\tExtended breather",
+            "󰀻\t➕ Allow Current Window\tWhitelist current active app",
+            "󰏘\t📱 Manage Allowed Apps\tView or edit permitted apps",
+            "🌐\t📖 Manage Permitted Websites (Whitelist)\tAlways allowed study sites",
+            "⛔\t🚫 Manage Restricted Websites (Blacklist)\tBlocked distracting sites",
+            "󰂚\t🔔 Toggle Sound Alerts\tToggle sound chimes on/off"
+        ]
+        
+        sel = menu_select(f"Study Focus Active ({remaining})", options, width=580)
+        if not sel:
+            return
+            
+        action = sel.split("\t")[0]
+        if "End Session Now" in action:
+            stop_existing_daemon()
+            notify("🛑 Session Ended", "Focus session stopped. All tabs and apps unlocked.", glyph="󰓛")
+        elif "Extend Session" in action:
+            extend_session(10)
+        elif "Take a Short Break" in action:
+            start_session(5, session_type="break", label="Short Break")
+        elif "Take a Long Break" in action:
+            start_session(15, session_type="break", label="Long Break")
+        elif "Allow Current Window" in action:
+            allow_current_window()
+        elif "Manage Allowed Apps" in action:
+            manage_allowed_apps_menu()
+        elif "Manage Permitted Websites" in action:
+            manage_permitted_websites_menu()
+        elif "Manage Restricted Websites" in action:
+            manage_blocked_websites_menu()
+        elif "Toggle Sound Alerts" in action:
+            cfg["sound_alerts"] = not cfg.get("sound_alerts", True)
+            save_config(cfg)
+            status = "Enabled" if cfg["sound_alerts"] else "Disabled"
+            notify("Sound Alerts", f"Sound chimes are now {status}.", glyph="󰂚")
+            
+    else:
+        sound_status = "Enabled" if cfg.get("sound_alerts", True) else "Disabled"
+        options = [
+            "󰑴\tPomodoro Session (25 mins)\tClassic focus sprint + short break",
+            "󰡄\tDeep Study Sprint (45 mins)\tIdeal for lectures, chapters & solving",
+            "󰌌\tIntense Marathon (60 mins)\tOne solid hour of distraction-free work",
+            "󰒲\tCustom Focus Timer...\tSet your own duration in minutes",
+            "󰐊\tQuick Break (5 mins)\tShort rest before starting next session",
+            "󰀻\t📱 Manage Allowed Study Apps\tConfigure whitelisted applications",
+            "🌐\t📖 Manage Permitted Websites (Whitelist)\tAllowed study websites & portals",
+            "⛔\t🚫 Manage Restricted Websites (Blacklist)\tDistracting sites to block",
+            f"󰂚\tToggle Sound Chimes ({sound_status})\tTurn completion and warning sounds on/off"
+        ]
+        
+        sel = menu_select("Study & Focus Mode", options, width=600)
+        if not sel:
+            return
+            
+        action = sel.split("\t")[0]
+        if "Pomodoro Session" in action:
+            start_session(25, session_type="study", label="Pomodoro Focus")
+        elif "Deep Study Sprint" in action:
+            start_session(45, session_type="study", label="Deep Study Sprint")
+        elif "Intense Marathon" in action:
+            start_session(60, session_type="study", label="Intense Marathon")
+        elif "Custom Focus Timer" in action:
+            val = menu_input("Enter study duration in minutes (e.g. 30, 90):", width=460)
+            if val:
+                try:
+                    mins = float(val)
+                    if mins > 0:
+                        start_session(mins, session_type="study", label=f"Custom Focus ({int(mins)}m)")
+                    else:
+                        notify("Invalid Time", "Please enter a positive number of minutes.", glyph="󰢌")
+                except ValueError:
+                    notify("Invalid Input", "Please enter a valid number.", glyph="󰢌")
+        elif "Quick Break" in action:
+            start_session(5, session_type="break", label="Quick Break")
+        elif "Manage Allowed Study Apps" in action:
+            manage_allowed_apps_menu()
+        elif "Manage Permitted Websites" in action:
+            manage_permitted_websites_menu()
+        elif "Manage Restricted Websites" in action:
+            manage_blocked_websites_menu()
+        elif "Toggle Sound Chimes" in action:
+            cfg["sound_alerts"] = not cfg.get("sound_alerts", True)
+            save_config(cfg)
+            status = "Enabled" if cfg["sound_alerts"] else "Disabled"
+            notify("Sound Alerts", f"Sound chimes are now {status}.", glyph="󰂚")
+
+def main():
+    if len(sys.argv) > 1:
+        cmd = sys.argv[1]
+        if cmd == "daemon-exec":
+            if len(sys.argv) >= 5:
+                duration = int(sys.argv[2])
+                stype = sys.argv[3]
+                label = sys.argv[4]
+                paused_study = None
+                if "--paused-study" in sys.argv:
+                    idx = sys.argv.index("--paused-study")
+                    if idx + 1 < len(sys.argv):
+                        try:
+                            paused_study = json.loads(sys.argv[idx + 1])
+                        except Exception:
+                            pass
+                run_daemon(duration, session_type=stype, label=label, paused_study=paused_study)
+            return
+        elif cmd in ["menu", "popup"]:
+            show_main_menu()
+            return
+        elif cmd == "start":
+            mins = float(sys.argv[2]) if len(sys.argv) > 2 else 25
+            label = sys.argv[3] if len(sys.argv) > 3 else "Study Focus"
+            start_session(mins, session_type="study", label=label)
+            return
+        elif cmd == "break":
+            mins = float(sys.argv[2]) if len(sys.argv) > 2 else 5
+            label = sys.argv[3] if len(sys.argv) > 3 else "Break"
+            start_session(mins, session_type="break", label=label)
+            return
+        elif cmd == "resume":
+            resume_study_session()
+            return
+        elif cmd == "trigger-reward":
+            mins = int(sys.argv[2]) if len(sys.argv) > 2 else 25
+            lbl = sys.argv[3] if len(sys.argv) > 3 else "Pomodoro Focus"
+            record_completion_event(mins * 60, lbl)
+            notify("🎉 Session Complete!", f"Celebration reward triggered for {lbl} ({mins}m).", glyph="🏆")
+            play_sound("complete")
+            return
+        elif cmd == "stop":
+            stop_existing_daemon(clear=True)
+            notify("🛑 Session Stopped", "Study focus mode ended.", glyph="󰓛")
+            return
+        elif cmd == "extend":
+            mins = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+            extend_session(mins)
+            return
+        elif cmd == "toggle-strict":
+            cfg = load_config()
+            cfg["strict_website_whitelist"] = not cfg.get("strict_website_whitelist", False)
+            save_config(cfg)
+            new_status = "STRICT" if cfg["strict_website_whitelist"] else "STANDARD"
+            notify("Website Filter Mode", f"Mode set to: {new_status}", glyph="🔒")
+            return
+        elif cmd == "toggle-sound":
+            cfg = load_config()
+            cfg["sound_alerts"] = not cfg.get("sound_alerts", True)
+            save_config(cfg)
+            status = "Enabled" if cfg["sound_alerts"] else "Disabled"
+            notify("Sound Alerts", f"Sound chimes are now {status}.", glyph="󰂚")
+            return
+        elif cmd == "reset-stats":
+            stats_file = CONFIG_DIR / "study-stats.json"
+            today = time.strftime("%Y-%m-%d")
+            stats = {}
+            if stats_file.exists():
+                try:
+                    stats = json.load(open(stats_file))
+                except Exception:
+                    pass
+            stats[today] = {"minutes": 0, "sessions": 0}
+            with open(stats_file, "w") as f:
+                json.dump(stats, f, indent=2)
+            notify("Stats Reset", "Today's focus time and sprints reset.", glyph="󰄬")
+            return
+        elif cmd == "status":
+            state = load_state()
+            if state and state.get("active"):
+                rem = format_time_remaining(state.get("ends_at", 0) - time.time())
+                print(f"Active: {state.get('label')} ({rem} remaining)")
+            else:
+                print("Inactive")
+            return
+        elif cmd in ["allow-current", "allow-active"]:
+            allow_current_window()
+            return
+        elif cmd == "allow":
+            if len(sys.argv) > 2:
+                add_allowed_app(sys.argv[2])
+            return
+        elif cmd == "disallow":
+            if len(sys.argv) > 2:
+                remove_allowed_app(sys.argv[2])
+            return
+        elif cmd in ["allow-site", "allow-domain"]:
+            if len(sys.argv) > 2:
+                add_allowed_domain(sys.argv[2])
+            return
+        elif cmd in ["disallow-site", "disallow-domain"]:
+            if len(sys.argv) > 2:
+                remove_allowed_domain(sys.argv[2])
+            return
+        elif cmd == "block-domain":
+            if len(sys.argv) > 2:
+                add_blocked_domain(sys.argv[2])
+            return
+        elif cmd == "unblock-domain":
+            if len(sys.argv) > 2:
+                remove_blocked_domain(sys.argv[2])
+            return
+        elif cmd == "help" or cmd == "--help" or cmd == "-h":
+            print("""Usage: omarchy-study-focus [command]
+
+Commands:
+  menu                  Open the interactive Omarchy popup menu (default)
+  start <minutes> [tag] Start a study session with tab & app whitelist enforcement
+  break <minutes> [tag] Start a break timer
+  stop                  Stop active session and remove restrictions
+  status                Show current timer status
+  allow-current         Whitelist the currently active window
+  allow <pattern>       Add app pattern to whitelist (e.g. 'vlc*')
+  disallow <pattern>    Remove app pattern from whitelist
+  allow-site <domain>   Add website to permitted whitelist (e.g. 'missionjeet.in')
+  disallow-site <dom>   Remove website from permitted whitelist
+  block-domain <domain> Add website to restricted blacklist (e.g. 'reddit.com')
+  unblock-domain <dom>  Remove website from restricted blacklist
+""")
+            return
+
+    show_main_menu()
+
+if __name__ == "__main__":
+    main()

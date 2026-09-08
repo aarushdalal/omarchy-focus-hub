@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "daemon0.focus-hub",
+  "name": "Focus Hub",
+  "version": "1.0.0",
+  "author": "Daemon0",
+  "description": "Interactive study session controller, focus timer, and optional distraction manager",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Focus Hub",
+    "description": "Focus timer and distraction restriction controller",
+    "category": "Productivity",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

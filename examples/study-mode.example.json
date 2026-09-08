@@ -1,0 +1,25 @@
+{
+  "timer": {
+    "focus_minutes": 25,
+    "short_break_minutes": 5,
+    "long_break_minutes": 15,
+    "long_break_interval": 4
+  },
+  "restrictions": {
+    "block_distractions": false,
+    "blocked_binaries": [
+      "steam",
+      "discord"
+    ],
+    "blocked_domains": [
+      "reddit.com",
+      "twitter.com",
+      "x.com",
+      "youtube.com"
+    ]
+  },
+  "sound": {
+    "reward_audio": true,
+    "volume": 70
+  }
+}
