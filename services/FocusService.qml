@@ -138,73 +138,73 @@ Item {
 
   function startSession(minutes, label) {
     var lbl = label || "Study Focus"
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "start", String(minutes), lbl])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "start", String(minutes), lbl])
   }
 
   function startBreak(minutes) {
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "break", String(minutes)])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "break", String(minutes)])
   }
 
   function resumeSession() {
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "resume"])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "resume"])
   }
 
   function triggerRewardTest() {
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "trigger-reward"])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "trigger-reward"])
   }
 
   function stopSession() {
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "stop"])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "stop"])
   }
 
   function extendSession(minutes) {
     var mins = minutes || 10
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "extend", String(mins)])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "extend", String(mins)])
   }
 
   function allowActiveWindow() {
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "allow-current"])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "allow-current"])
   }
 
   function addAllowedDomain(domain) {
     if (!domain || domain.trim() === "") return
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "allow-site", domain.trim()])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "allow-site", domain.trim()])
   }
 
   function removeAllowedDomain(domain) {
     if (!domain || domain.trim() === "") return
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "disallow-site", domain.trim()])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "disallow-site", domain.trim()])
   }
 
   function addBlockedDomain(domain) {
     if (!domain || domain.trim() === "") return
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "block-domain", domain.trim()])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "block-domain", domain.trim()])
   }
 
   function removeBlockedDomain(domain) {
     if (!domain || domain.trim() === "") return
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "unblock-domain", domain.trim()])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "unblock-domain", domain.trim()])
   }
 
   function addAllowedApp(app) {
     if (!app || app.trim() === "") return
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "allow", app.trim()])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "allow", app.trim()])
   }
 
   function removeAllowedApp(app) {
     if (!app || app.trim() === "") return
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "disallow", app.trim()])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "disallow", app.trim()])
   }
 
   function toggleStrictWhitelist() {
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "toggle-strict"])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "toggle-strict"])
   }
 
   function toggleSoundAlerts() {
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "toggle-sound"])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "toggle-sound"])
   }
 
   function resetStats() {
-    runCmd(["Quickshell.env("HOME") + "/.local/bin/omarchy-focus-hub"", "reset-stats"])
+    runCmd([(Quickshell.env("HOME") || "") + "/.local/bin/omarchy-focus-hub", "reset-stats"])
   }
 }
