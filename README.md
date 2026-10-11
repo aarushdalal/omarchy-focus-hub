@@ -192,11 +192,11 @@ omarchy plugin remove daemon0.focus-hub --yes
 
 ## Showcase
 
-![Focus timer](assets/showcase/focus_focus.png)
-![Ambient sounds](assets/showcase/focus_ambience.png)
-![App controls](assets/showcase/focus_apps.png)
-![Session stats](assets/showcase/focus_stats.png)
-![Website controls](assets/showcase/focus_websites.png)
+![Sample design preview](assets/showcase/preview.svg)
+![Sample design preview](assets/showcase/preview.svg)
+![Sample design preview](assets/showcase/preview.svg)
+![Sample design preview](assets/showcase/preview.svg)
+![Sample design preview](assets/showcase/preview.svg)
 
 ---
 
@@ -217,3 +217,10 @@ This project is licensed under the [MIT License](LICENSE).
 - Built for the [Omarchy](https://github.com/basecamp/omarchy) desktop environment.
 - Powered by [Quickshell](https://quickshell.outfoxxed.me/) and [Hyprland](https://hyprland.org/).
 - Not an official Omarchy product.
+
+## Refinement and privacy update
+
+Focus timer · reliable extensions · precise window actions. Current showcases use sample data; see [release privacy](docs/RELEASE-PRIVACY.md). Existing Git history is preserved.
+
+
+Restricted tabs receive a notice and require a browser integration for exact-tab closure. The helper never sends a global close-tab shortcut. Optional whole-window restrictions target the exact compositor address; app restrictions use same-user exact executable names with a grace period.

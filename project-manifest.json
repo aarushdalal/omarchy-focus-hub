@@ -1,11 +1,11 @@
 {
   "name": "omarchy-focus-hub",
   "id": "daemon0.focus-hub",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Interactive focus timer, ambient sounds, and optional distraction controls",
   "author": "Daemon0",
   "license": "MIT",
-  "repository": "https://github.com/YOUR-USERNAME/omarchy-focus-hub",
+  "repository": "https://github.com/aarushdalal/omarchy-focus-hub",
   "entryPoints": {
     "barWidget": "BarWidget.qml"
   },

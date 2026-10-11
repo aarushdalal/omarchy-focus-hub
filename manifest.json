@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "daemon0.focus-hub",
   "name": "Focus Hub",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Daemon0",
   "description": "Interactive study session controller, focus timer, and optional distraction manager",
   "kinds": [

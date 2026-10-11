@@ -50,8 +50,7 @@ DEFAULT_BLOCKED_BINARIES = [
 ]
 
 DEFAULT_ALLOWED_DOMAINS = [
-    "missionjeet.in",
-    "github.com",
+        "github.com",
     "stackoverflow.com",
     "wikipedia.org",
     "google.com",
@@ -250,15 +249,23 @@ def load_state():
             if state.get("active") and state.get("ends_at", 0) > time.time():
                 return state
             if state.get("active") and state.get("ends_at", 0) <= time.time():
-                clear_state()
+                # The daemon owns expiry and completion; readers never remove
+                # its authoritative deadline while it is processing expiry.
+                return None
             return None
     except Exception:
         return None
 
 def save_state(state):
     ensure_dirs()
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
+    import tempfile
+    descriptor, temporary = tempfile.mkstemp(prefix=".state-", dir=STATE_FILE.parent)
+    try:
+        with os.fdopen(descriptor, "w") as f:
+            json.dump(state, f, indent=2); f.flush(); os.fsync(f.fileno())
+        os.replace(temporary, STATE_FILE)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
 
 def record_session_completion(duration_seconds, label):
     stats_file = CONFIG_DIR / "study-stats.json"
@@ -462,14 +469,27 @@ def get_process_comm(pid):
     except Exception:
         return ""
 
+_last_termination = {}
+
 def kill_forbidden_binaries(blocked_binaries):
-    for binary in blocked_binaries:
-        if not binary or binary.lower() in IMMUNE_PROCESSES:
-            continue
+    # One same-user process snapshot. Exact executable identity and SIGTERM
+    # preserve unrelated command lines and application save handling.
+    blocked = {str(value).lower() for value in blocked_binaries} - set(IMMUNE_PROCESSES)
+    now = time.monotonic()
+    for proc in Path("/proc").iterdir():
+        if not proc.name.isdigit(): continue
+        pid = int(proc.name)
+        if pid == os.getpid(): continue
         try:
-            subprocess.run(["pkill", "-9", "-f", binary], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
+            if proc.stat().st_uid != os.getuid(): continue
+            executable = Path(os.readlink(proc / "exe")).name.lower()
+            identity = (pid, (proc / "stat").read_text().rsplit(")", 1)[1].split()[19])
+            if executable not in blocked or now - _last_termination.get(identity, -10) < 10: continue
+            os.kill(pid, signal.SIGTERM)
+            _last_termination[identity] = now
+        except (OSError, ValueError, IndexError): continue
+    for identity, sent in list(_last_termination.items()):
+        if now - sent > 60: _last_termination.pop(identity, None)
 
 def is_window_forbidden(win_class, win_initial_class, win_title, allowed_patterns, blocked_patterns, allowed_domains):
     w_class = win_class.lower()
@@ -525,22 +545,14 @@ def is_window_forbidden(win_class, win_initial_class, win_title, allowed_pattern
     return True, "Not on study whitelist", "window"
 
 def enforce_close_tab_or_window(address, action_type="window", pid=None):
-    if action_type == "tab":
-        try:
-            subprocess.run(["wtype", "-M", "ctrl", "w", "-m", "ctrl"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
-    elif action_type == "window" and address:
-        cmd_close = f'hl.dsp.window.close({{ window = "address:{address}" }})'
-        subprocess.run(["hyprctl", "dispatch", cmd_close], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        if pid and pid > 1000:
-            comm = get_process_comm(pid)
-            if comm and comm not in IMMUNE_PROCESSES and "brave" not in comm and "chrome" not in comm:
-                try:
-                    os.kill(pid, signal.SIGKILL)
-                except Exception:
-                    pass
+    # Tab closure needs browser integration. Global synthetic Ctrl-W can hit
+    # a different application, even after a focus check, so never send it.
+    if action_type == "tab": return False
+    if action_type == "window" and isinstance(address, str) and address.startswith("0x"):
+        result = subprocess.run(["hyprctl", "dispatch", "closewindow", "address:" + address],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
+        return result.returncode == 0
+    return False
 
 # ==============================================================================
 # DAEMON LOGIC
@@ -611,9 +623,16 @@ def run_daemon(duration_seconds, session_type="study", label="Focus Session", pa
         kill_forbidden_binaries(cfg.get("blocked_binaries", DEFAULT_BLOCKED_BINARIES))
 
     try:
-        while time.time() < ends_at:
+        while True:
+            try:
+                state_now = json.loads(STATE_FILE.read_text())
+            except (OSError, ValueError):
+                return
+            if not state_now.get("active") or state_now.get("pid") != pid: return
+            ends_at = state_now.get("ends_at", ends_at)
             time_left = ends_at - time.time()
             if time_left <= 0:
+                duration_seconds = state_now.get("total_seconds", duration_seconds)
                 break
 
             cfg = load_config()
@@ -624,7 +643,7 @@ def run_daemon(duration_seconds, session_type="study", label="Focus Session", pa
             close_blocked = cfg.get("close_blocked_windows", True)
 
             # 1. Kill standalone distraction processes
-            if session_type == "study" and time.time() - last_proc_check >= 0.5:
+            if session_type == "study" and time.time() - last_proc_check >= 2.0:
                 last_proc_check = time.time()
                 kill_forbidden_binaries(blocked_binaries)
 
@@ -701,7 +720,7 @@ def check_and_enforce_windows(allowed_apps, blocked_patterns, allowed_domains, c
                 app_name = w_title or w_class or "Application"
                 if len(app_name) > 35:
                     app_name = app_name[:32] + "..."
-                msg = f"Closed forbidden tab: '{app_name}'" if action_type == "tab" else f"Blocked: '{app_name}' is restricted!"
+                msg = "Restricted tab detected; browser integration is required to close it." if action_type == "tab" else f"Blocked: '{app_name}' is restricted!"
                 notify("⛔ Focus Restriction", msg, glyph="󰅶", urgency="critical")
                 play_sound("blocked")
 
