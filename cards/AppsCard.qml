@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import qs.Commons as OmarchyPalette
 import qs.Commons
 import qs.Ui
 
@@ -46,7 +47,7 @@ Item {
       Layout.fillWidth: true
       height: Style.space(52)
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
       RowLayout {
         anchors.fill: parent
@@ -67,13 +68,13 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             Text {
               text: "Currently Focused Window"
-              color: Qt.darker(Color.foreground, 1.4)
+              color: Qt.darker(OmarchyPalette.Color.foreground, 1.4)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
             }
             Text {
               text: (root.focusService && root.focusService.activeWindowClass) ? root.focusService.activeWindowClass : "No active window"
-              color: Color.foreground
+              color: OmarchyPalette.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               font.bold: true
@@ -89,7 +90,7 @@ Item {
           height: Style.space(32)
           width: btnAllowWinMouse.containsMouse ? Style.space(130) : Style.space(120)
           radius: Style.cornerRadius - 2
-          color: btnAllowWinMouse.containsMouse ? Qt.lighter(Color.accent, 1.1) : Color.accent
+          color: btnAllowWinMouse.containsMouse ? Qt.lighter(OmarchyPalette.Color.accent, 1.1) : OmarchyPalette.Color.accent
           scale: btnAllowWinMouse.pressed ? 0.96 : 1.0
 
           Behavior on width { NumberAnimation { duration: 150 } }
@@ -98,7 +99,7 @@ Item {
           Text {
             anchors.centerIn: parent
             text: "➕ Allow Window"
-            color: Color.background
+            color: OmarchyPalette.Color.background
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -128,7 +129,7 @@ Item {
         id: appInputBar
         anchors.fill: parent
         radius: Style.cornerRadius
-        color: Style.normalFillFor(Color.foreground, Color.accent)
+        color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
         RowLayout {
           anchors.fill: parent
@@ -148,8 +149,8 @@ Item {
             placeholderText: "Search app (e.g. vlc, obsidian, discord) or enter pattern..."
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
-            foreground: Color.foreground
-            accent: Color.accent
+            foreground: OmarchyPalette.Color.foreground
+            accent: OmarchyPalette.Color.accent
             Layout.alignment: Qt.AlignVCenter
             focus: true
 
@@ -179,13 +180,13 @@ Item {
             width: Style.space(28)
             height: Style.space(28)
             radius: Style.cornerRadius - 3
-            color: toggleDropdownMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : "transparent"
+            color: toggleDropdownMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : "transparent"
             Layout.alignment: Qt.AlignVCenter
 
             Text {
               anchors.centerIn: parent
               text: root.dropdownOpen ? "▲" : "▼"
-              color: root.dropdownOpen ? Color.accent : Qt.darker(Color.foreground, 1.4)
+              color: root.dropdownOpen ? OmarchyPalette.Color.accent : Qt.darker(OmarchyPalette.Color.foreground, 1.4)
               font.pixelSize: Style.font.caption - 1
             }
 
@@ -206,13 +207,13 @@ Item {
             width: Style.space(56)
             height: Style.space(30)
             radius: Style.cornerRadius - 3
-            color: addAppMouse.containsMouse ? Qt.lighter(Color.accent, 1.1) : Color.accent
+            color: addAppMouse.containsMouse ? Qt.lighter(OmarchyPalette.Color.accent, 1.1) : OmarchyPalette.Color.accent
             Layout.alignment: Qt.AlignVCenter
 
             Text {
               anchors.centerIn: parent
               text: "➕ Add"
-              color: Color.background
+              color: OmarchyPalette.Color.background
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
@@ -272,7 +273,7 @@ Item {
               width: suggestionsCol.width
               height: Style.space(32)
               radius: Style.cornerRadius - 3
-              color: itemMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : "transparent"
+              color: itemMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : "transparent"
 
               RowLayout {
                 anchors.fill: parent
@@ -288,7 +289,7 @@ Item {
 
                 Text {
                   text: modelData.name
-                  color: itemMouse.containsMouse ? Color.accent : Color.foreground
+                  color: itemMouse.containsMouse ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
@@ -297,7 +298,7 @@ Item {
 
                 Text {
                   text: "(" + (modelData.class || modelData.exec) + "*)"
-                  color: Qt.darker(Color.foreground, 1.8)
+                  color: Qt.darker(OmarchyPalette.Color.foreground, 1.8)
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption - 1
                   Layout.alignment: Qt.AlignVCenter
@@ -307,7 +308,7 @@ Item {
 
                 Text {
                   text: "➕ Allow"
-                  color: Color.accent
+                  color: OmarchyPalette.Color.accent
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption - 1
                   font.bold: true
@@ -339,7 +340,7 @@ Item {
       Layout.fillWidth: true
       Layout.fillHeight: true
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
       clip: true
 
       ColumnLayout {
@@ -351,14 +352,14 @@ Item {
           spacing: Style.space(6)
           Text {
             text: "📱 Permitted Study Applications"
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             font.bold: true
           }
           Text {
             text: "(" + (root.focusService ? root.focusService.allowedApps.length : 0) + ")"
-            color: Qt.darker(Color.foreground, 1.5)
+            color: Qt.darker(OmarchyPalette.Color.foreground, 1.5)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -382,7 +383,7 @@ Item {
                 height: Style.space(28)
                 width: appRow.implicitWidth + Style.space(14)
                 radius: Style.cornerRadius - 3
-                color: Style.selectedFillFor(Color.foreground, Color.accent)
+                color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
                 Row {
                   id: appRow
@@ -391,7 +392,7 @@ Item {
 
                   Text {
                     text: modelData
-                    color: Color.foreground
+                    color: OmarchyPalette.Color.foreground
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption
                     font.bold: true
@@ -400,7 +401,7 @@ Item {
 
                   Text {
                     text: "✕"
-                    color: remAppMouse.containsMouse ? "#ff4455" : Qt.darker(Color.foreground, 1.6)
+                    color: remAppMouse.containsMouse ? "#ff4455" : Qt.darker(OmarchyPalette.Color.foreground, 1.6)
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption - 1
                     anchors.verticalCenter: parent.verticalCenter

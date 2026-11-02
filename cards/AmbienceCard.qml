@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
+import qs.Commons as OmarchyPalette
 import qs.Commons
 import qs.Ui
 
@@ -51,7 +52,7 @@ Item {
       Layout.fillWidth: true
       height: Style.space(110)
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
       ColumnLayout {
         anchors.fill: parent
@@ -64,14 +65,14 @@ Item {
             spacing: Style.space(8)
             Text {
               text: "󰝚"
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: Style.font.family
               font.pixelSize: Style.font.body
               anchors.verticalCenter: parent.verticalCenter
             }
             Text {
               text: "Focus Ambient Background Sound"
-              color: Color.foreground
+              color: OmarchyPalette.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               font.bold: true
@@ -81,7 +82,7 @@ Item {
           Item { Layout.fillWidth: true }
           Text {
             text: root.ambiencePlaying ? "PLAYING" : "OFF"
-            color: root.ambiencePlaying ? Color.accent : Qt.darker(Color.foreground, 1.6)
+            color: root.ambiencePlaying ? OmarchyPalette.Color.accent : Qt.darker(OmarchyPalette.Color.foreground, 1.6)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -105,15 +106,15 @@ Item {
               radius: Style.cornerRadius - 2
               readonly property bool isSelected: root.ambiencePlaying && root.currentAmbience === modelData.id
               color: isSelected
-                ? Style.selectedFillFor(Color.foreground, Color.accent)
-                : (cardMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.normalFillFor(Color.foreground, Color.accent))
+                ? Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+                : (cardMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent))
 
               Row {
                 anchors.centerIn: parent
                 spacing: Style.space(6)
                 Text {
                   text: modelData.label
-                  color: isSelected ? Color.accent : Color.foreground
+                  color: isSelected ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: isSelected
@@ -146,7 +147,7 @@ Item {
         Layout.fillWidth: true
         Layout.fillHeight: true
         radius: Style.cornerRadius
-        color: Style.normalFillFor(Color.foreground, Color.accent)
+        color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
         RowLayout {
           anchors.fill: parent
@@ -157,14 +158,14 @@ Item {
             spacing: Style.space(4)
             Text {
               text: "🔔 Sound Chimes"
-              color: Color.foreground
+              color: OmarchyPalette.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               font.bold: true
             }
             Text {
               text: "Play audio alert when session starts or blocked site is opened"
-              color: Qt.darker(Color.foreground, 1.5)
+              color: Qt.darker(OmarchyPalette.Color.foreground, 1.5)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
               wrapMode: Text.WordWrap
@@ -176,12 +177,12 @@ Item {
             width: Style.space(52)
             height: Style.space(26)
             radius: Style.cornerRadius - 2
-            color: (root.focusService && root.focusService.soundAlerts) ? Color.accent : Style.selectedFillFor(Color.foreground, Color.accent)
+            color: (root.focusService && root.focusService.soundAlerts) ? OmarchyPalette.Color.accent : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
             Text {
               anchors.centerIn: parent
               text: (root.focusService && root.focusService.soundAlerts) ? "ON" : "OFF"
-              color: (root.focusService && root.focusService.soundAlerts) ? Color.background : Color.foreground
+              color: (root.focusService && root.focusService.soundAlerts) ? OmarchyPalette.Color.background : OmarchyPalette.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
@@ -203,7 +204,7 @@ Item {
         Layout.fillWidth: true
         Layout.fillHeight: true
         radius: Style.cornerRadius
-        color: Style.normalFillFor(Color.foreground, Color.accent)
+        color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
         RowLayout {
           anchors.fill: parent
@@ -214,14 +215,14 @@ Item {
             spacing: Style.space(4)
             Text {
               text: "🔕 Focus Mode Shield"
-              color: Color.foreground
+              color: OmarchyPalette.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               font.bold: true
             }
             Text {
               text: "Non-permitted apps & websites automatically restricted"
-              color: Qt.darker(Color.foreground, 1.5)
+              color: Qt.darker(OmarchyPalette.Color.foreground, 1.5)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
               wrapMode: Text.WordWrap
@@ -233,12 +234,12 @@ Item {
             width: Style.space(52)
             height: Style.space(26)
             radius: Style.cornerRadius - 2
-            color: Style.selectedFillFor(Color.foreground, Color.accent)
+            color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
             Text {
               anchors.centerIn: parent
               text: (root.focusService && root.focusService.active) ? "ACTIVE" : "AUTO"
-              color: (root.focusService && root.focusService.active) ? Color.accent : Qt.darker(Color.foreground, 1.4)
+              color: (root.focusService && root.focusService.active) ? OmarchyPalette.Color.accent : Qt.darker(OmarchyPalette.Color.foreground, 1.4)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true

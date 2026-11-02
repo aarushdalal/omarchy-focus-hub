@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import qs.Commons as OmarchyPalette
 import qs.Commons
 import qs.Ui
 
@@ -65,7 +66,7 @@ Item {
   Timer {
     id: confettiTimer
     interval: 16
-    running: root.active
+    running: root.active && root.visible && !Motion.reducedMotion
     repeat: true
     onTriggered: {
       for (var i = 0; i < confettiRepeater.count; i++) {
@@ -198,7 +199,7 @@ Item {
       z: -1
 
       SequentialAnimation on opacity {
-        running: root.active
+        running: root.active && root.visible && !Motion.reducedMotion
         loops: Animation.Infinite
         NumberAnimation { from: 0.3; to: 0.8; duration: 900; easing.type: Easing.InOutQuad }
         NumberAnimation { from: 0.8; to: 0.3; duration: 900; easing.type: Easing.InOutQuad }
@@ -224,7 +225,7 @@ Item {
           color: Qt.rgba(1.0, 0.84, 0.0, 0.18)
 
           SequentialAnimation on scale {
-            running: root.active
+            running: root.active && root.visible && !Motion.reducedMotion
             loops: Animation.Infinite
             NumberAnimation { from: 1.0; to: 1.15; duration: 800; easing.type: Easing.InOutQuad }
             NumberAnimation { from: 1.15; to: 1.0; duration: 800; easing.type: Easing.InOutQuad }
@@ -255,7 +256,7 @@ Item {
         Text {
           anchors.horizontalCenter: parent.horizontalCenter
           text: "+" + root.rewardMinutes + " Minutes of Deep Work Logged"
-          color: Color.foreground
+          color: OmarchyPalette.Color.foreground
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
           font.bold: true
@@ -267,7 +268,7 @@ Item {
         Layout.fillWidth: true
         height: Style.space(36)
         radius: Style.cornerRadius - 2
-        color: Style.selectedFillFor(Color.foreground, Color.accent)
+        color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
         RowLayout {
           anchors.fill: parent
@@ -276,7 +277,7 @@ Item {
 
           Text {
             text: "🎯 " + root.rewardLabel
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -286,7 +287,7 @@ Item {
 
           Text {
             text: "📈 Today: " + (root.focusService ? root.focusService.todayMinutes : 0) + "m"
-            color: Qt.darker(Color.foreground, 1.3)
+            color: Qt.darker(OmarchyPalette.Color.foreground, 1.3)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -299,7 +300,7 @@ Item {
         Layout.fillWidth: true
         height: Style.space(38)
         radius: Style.cornerRadius - 2
-        color: claimBtnMouse.containsMouse ? Qt.lighter(Color.accent, 1.15) : Color.accent
+        color: claimBtnMouse.containsMouse ? Qt.lighter(OmarchyPalette.Color.accent, 1.15) : OmarchyPalette.Color.accent
         scale: claimBtnMouse.pressed ? 0.97 : 1.0
 
         Behavior on scale { NumberAnimation { duration: 120 } }
@@ -311,7 +312,7 @@ Item {
 
           Text {
             text: "󰄬"
-            color: Color.background
+            color: OmarchyPalette.Color.background
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             font.bold: true
@@ -320,7 +321,7 @@ Item {
 
           Text {
             text: "Claim Reward & Continue"
-            color: Color.background
+            color: OmarchyPalette.Color.background
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             font.bold: true

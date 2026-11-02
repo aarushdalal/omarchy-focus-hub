@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.Commons as OmarchyPalette
 import qs.Commons
 import qs.Ui
 
@@ -8,12 +9,13 @@ Item {
 
   property var focusService: null
   property date currentDate: new Date()
+  onEnabledChanged: if (enabled) currentDate = new Date()
   property int customMinutes: 30
   property string selectedTag: "Deep Study"
 
   Timer {
     interval: 1000
-    running: true
+    running: root.visible && root.enabled
     repeat: true
     onTriggered: root.currentDate = new Date()
   }
@@ -27,7 +29,7 @@ Item {
       Layout.fillWidth: true
       height: Style.space(44)
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
       RowLayout {
         anchors.fill: parent
@@ -40,7 +42,7 @@ Item {
 
           Text {
             text: "󰥔"
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
             font.family: Style.font.family
             font.pixelSize: Style.font.title
             anchors.verticalCenter: parent.verticalCenter
@@ -48,7 +50,7 @@ Item {
 
           Text {
             text: Qt.formatDateTime(root.currentDate, "hh:mm AP")
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.title
             font.bold: true
@@ -57,7 +59,7 @@ Item {
 
           Text {
             text: "•"
-            color: Qt.darker(Color.foreground, 2.0)
+            color: Qt.darker(OmarchyPalette.Color.foreground, 2.0)
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             anchors.verticalCenter: parent.verticalCenter
@@ -65,7 +67,7 @@ Item {
 
           Text {
             text: Qt.formatDateTime(root.currentDate, "dddd, d MMMM").toUpperCase()
-            color: Qt.darker(Color.foreground, 1.4)
+            color: Qt.darker(OmarchyPalette.Color.foreground, 1.4)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -81,8 +83,8 @@ Item {
           height: Style.space(26)
           width: statusRow.implicitWidth + Style.space(16)
           color: (root.focusService && root.focusService.active)
-            ? (root.focusService.sessionType === "break" ? Qt.rgba(0.2, 0.8, 0.4, 0.2) : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25))
-            : Style.selectedFillFor(Color.foreground, Color.accent)
+            ? (root.focusService.sessionType === "break" ? Qt.rgba(0.2, 0.8, 0.4, 0.2) : Qt.rgba(OmarchyPalette.Color.accent.r, OmarchyPalette.Color.accent.g, OmarchyPalette.Color.accent.b, 0.25))
+            : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
           Row {
             id: statusRow
@@ -93,7 +95,7 @@ Item {
               width: 8
               height: 8
               radius: 4
-              color: (root.focusService && root.focusService.active) ? (root.focusService.sessionType === "break" ? "#44cc77" : Color.accent) : "#888888"
+              color: (root.focusService && root.focusService.active) ? (root.focusService.sessionType === "break" ? "#44cc77" : OmarchyPalette.Color.accent) : "#888888"
               anchors.verticalCenter: parent.verticalCenter
 
               SequentialAnimation on opacity {
@@ -108,7 +110,7 @@ Item {
               text: (root.focusService && root.focusService.active)
                 ? (root.focusService.sessionType === "break" ? "ON BREAK" : "STUDY ACTIVE")
                 : "READY TO STUDY"
-              color: (root.focusService && root.focusService.active) ? Color.foreground : Qt.darker(Color.foreground, 1.4)
+              color: (root.focusService && root.focusService.active) ? OmarchyPalette.Color.foreground : Qt.darker(OmarchyPalette.Color.foreground, 1.4)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
@@ -124,7 +126,7 @@ Item {
       Layout.fillWidth: true
       Layout.fillHeight: true
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
       ColumnLayout {
         anchors.centerIn: parent
@@ -139,7 +141,7 @@ Item {
             text: (root.focusService && root.focusService.active)
               ? (root.focusService.sessionType === "break" ? "☕" : "󰑴")
               : "🎯"
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
             font.family: Style.font.family
             font.pixelSize: Style.font.heading
             anchors.verticalCenter: parent.verticalCenter
@@ -147,7 +149,7 @@ Item {
 
           Text {
             text: (root.focusService && root.focusService.active) ? root.focusService.sessionLabel : root.selectedTag
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.heading
             font.bold: true
@@ -161,7 +163,7 @@ Item {
           text: (root.focusService && root.focusService.active)
             ? root.focusService.remainingFormatted
             : (root.customMinutes < 10 ? "0" + root.customMinutes + ":00" : root.customMinutes + ":00")
-          color: (root.focusService && root.focusService.active) ? Color.accent : Color.foreground
+          color: (root.focusService && root.focusService.active) ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground
           font.family: Style.font.family
           font.pixelSize: Math.round(Style.font.displayLarge * 1.5)
           font.bold: true
@@ -175,7 +177,7 @@ Item {
           width: Style.space(320)
           height: Style.space(7)
           radius: 3.5
-          color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.1)
+          color: Qt.rgba(OmarchyPalette.Color.foreground.r, OmarchyPalette.Color.foreground.g, OmarchyPalette.Color.foreground.b, 0.1)
 
           Rectangle {
             anchors.left: parent.left
@@ -183,7 +185,7 @@ Item {
             anchors.bottom: parent.bottom
             width: parent.width * ((root.focusService && root.focusService.active) ? (1.0 - root.focusService.progress) : 1.0)
             radius: 3.5
-            color: (root.focusService && root.focusService.sessionType === "break") ? "#44cc77" : Color.accent
+            color: (root.focusService && root.focusService.sessionType === "break") ? "#44cc77" : OmarchyPalette.Color.accent
 
             Behavior on width {
               NumberAnimation { duration: 400; easing.type: Easing.OutQuad }
@@ -208,7 +210,7 @@ Item {
               return "Adjust duration below and start focus session"
             }
           }
-          color: (root.focusService && root.focusService.sessionType === "break") ? "#44cc77" : Qt.darker(Color.foreground, 1.5)
+          color: (root.focusService && root.focusService.sessionType === "break") ? "#44cc77" : Qt.darker(OmarchyPalette.Color.foreground, 1.5)
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           font.bold: root.focusService && root.focusService.sessionType === "break"
@@ -221,7 +223,7 @@ Item {
       Layout.fillWidth: true
       height: Style.space(44)
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
       visible: !(root.focusService && root.focusService.active)
 
       RowLayout {
@@ -232,7 +234,7 @@ Item {
 
         Text {
           text: "⏱️ Custom Time:"
-          color: Color.foreground
+          color: OmarchyPalette.Color.foreground
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
           font.bold: true
@@ -244,13 +246,13 @@ Item {
           width: Style.space(32)
           height: Style.space(28)
           radius: Style.cornerRadius - 3
-          color: Style.selectedFillFor(Color.foreground, Color.accent)
+          color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
           Layout.alignment: Qt.AlignVCenter
 
           Text {
             anchors.centerIn: parent
             text: "-5"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -270,7 +272,7 @@ Item {
           width: Style.space(72)
           height: Style.space(30)
           radius: Style.cornerRadius - 3
-          color: Style.hoverFillFor(Color.foreground, Color.accent)
+          color: Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
           Layout.alignment: Qt.AlignVCenter
 
           Row {
@@ -280,7 +282,7 @@ Item {
             TextInput {
               id: customMinsInput
               text: String(root.customMinutes)
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: Style.font.family
               font.pixelSize: Style.font.body
               font.bold: true
@@ -298,7 +300,7 @@ Item {
 
             Text {
               text: "m"
-              color: Qt.darker(Color.accent, 1.3)
+              color: Qt.darker(OmarchyPalette.Color.accent, 1.3)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
@@ -312,13 +314,13 @@ Item {
           width: Style.space(32)
           height: Style.space(28)
           radius: Style.cornerRadius - 3
-          color: Style.selectedFillFor(Color.foreground, Color.accent)
+          color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
           Layout.alignment: Qt.AlignVCenter
 
           Text {
             anchors.centerIn: parent
             text: "+5"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -338,13 +340,13 @@ Item {
           width: Style.space(36)
           height: Style.space(28)
           radius: Style.cornerRadius - 3
-          color: Style.selectedFillFor(Color.foreground, Color.accent)
+          color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
           Layout.alignment: Qt.AlignVCenter
 
           Text {
             anchors.centerIn: parent
             text: "+15"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -366,7 +368,7 @@ Item {
           width: Style.space(120)
           height: Style.space(32)
           radius: Style.cornerRadius - 3
-          color: startCustMouse.containsMouse ? Qt.lighter(Color.accent, 1.12) : Color.accent
+          color: startCustMouse.containsMouse ? Qt.lighter(OmarchyPalette.Color.accent, 1.12) : OmarchyPalette.Color.accent
           scale: startCustMouse.pressed ? 0.96 : 1.0
           Layout.alignment: Qt.AlignVCenter
 
@@ -375,7 +377,7 @@ Item {
             spacing: Style.space(6)
             Text {
               text: "󰐊"
-              color: Color.background
+              color: OmarchyPalette.Color.background
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
@@ -383,7 +385,7 @@ Item {
             }
             Text {
               text: "Start (" + root.customMinutes + "m)"
-              color: Color.background
+              color: OmarchyPalette.Color.background
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
@@ -425,8 +427,8 @@ Item {
           height: Style.space(32)
           radius: Style.cornerRadius - 2
           color: chipMouse.containsMouse
-            ? Style.hoverFillFor(Color.foreground, Color.accent)
-            : Style.normalFillFor(Color.foreground, Color.accent)
+            ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+            : Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
           scale: chipMouse.pressed ? 0.96 : (chipMouse.containsMouse ? 1.02 : 1.0)
 
           Behavior on scale { NumberAnimation { duration: 120 } }
@@ -435,7 +437,7 @@ Item {
           Text {
             anchors.centerIn: parent
             text: modelData.label
-            color: chipMouse.containsMouse ? Color.accent : Color.foreground
+            color: chipMouse.containsMouse ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -471,7 +473,7 @@ Item {
         height: Style.space(42)
         radius: Style.cornerRadius
         visible: root.focusService && root.focusService.active && root.focusService.sessionType === "break"
-        color: btnResumeMouse.containsMouse ? Qt.lighter(Color.accent, 1.15) : Color.accent
+        color: btnResumeMouse.containsMouse ? Qt.lighter(OmarchyPalette.Color.accent, 1.15) : OmarchyPalette.Color.accent
         scale: btnResumeMouse.pressed ? 0.97 : 1.0
 
         Behavior on scale { NumberAnimation { duration: 120 } }
@@ -483,7 +485,7 @@ Item {
 
           Text {
             text: "▶️"
-            color: Color.background
+            color: OmarchyPalette.Color.background
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             anchors.verticalCenter: parent.verticalCenter
@@ -491,7 +493,7 @@ Item {
 
           Text {
             text: "Resume Focus Now"
-            color: Color.background
+            color: OmarchyPalette.Color.background
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             font.bold: true
@@ -518,7 +520,7 @@ Item {
         visible: !(root.focusService && root.focusService.active && root.focusService.sessionType === "break")
         color: (root.focusService && root.focusService.active)
           ? (btnStopMouse.containsMouse ? "#ff3344" : "#dd2233")
-          : (btnStartMouse.containsMouse ? Qt.lighter(Color.accent, 1.15) : Color.accent)
+          : (btnStartMouse.containsMouse ? Qt.lighter(OmarchyPalette.Color.accent, 1.15) : OmarchyPalette.Color.accent)
         scale: (btnStartMouse.pressed || btnStopMouse.pressed) ? 0.97 : 1.0
 
         Behavior on scale { NumberAnimation { duration: 120 } }
@@ -530,7 +532,7 @@ Item {
 
           Text {
             text: (root.focusService && root.focusService.active) ? "󰓛" : "󰐊"
-            color: (root.focusService && root.focusService.active) ? "#ffffff" : Color.background
+            color: (root.focusService && root.focusService.active) ? "#ffffff" : OmarchyPalette.Color.background
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             anchors.verticalCenter: parent.verticalCenter
@@ -540,7 +542,7 @@ Item {
             text: (root.focusService && root.focusService.active)
               ? "End Study Session"
               : "Start 25-Min Sprint"
-            color: (root.focusService && root.focusService.active) ? "#ffffff" : Color.background
+            color: (root.focusService && root.focusService.active) ? "#ffffff" : OmarchyPalette.Color.background
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             font.bold: true
@@ -577,7 +579,7 @@ Item {
         height: Style.space(42)
         radius: Style.cornerRadius
         visible: root.focusService && root.focusService.active && root.focusService.sessionType === "study"
-        color: btnExtMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.normalFillFor(Color.foreground, Color.accent)
+        color: btnExtMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
         scale: btnExtMouse.pressed ? 0.97 : 1.0
 
         Behavior on scale { NumberAnimation { duration: 120 } }
@@ -588,7 +590,7 @@ Item {
 
           Text {
             text: "󱓞"
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             anchors.verticalCenter: parent.verticalCenter
@@ -596,7 +598,7 @@ Item {
 
           Text {
             text: "+10m"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -621,7 +623,7 @@ Item {
         height: Style.space(42)
         radius: Style.cornerRadius
         visible: root.focusService && root.focusService.active && root.focusService.sessionType === "study"
-        color: btnBreakMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.normalFillFor(Color.foreground, Color.accent)
+        color: btnBreakMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
         scale: btnBreakMouse.pressed ? 0.97 : 1.0
 
         Behavior on scale { NumberAnimation { duration: 120 } }
@@ -638,7 +640,7 @@ Item {
 
           Text {
             text: "5m Break"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -663,7 +665,7 @@ Item {
         height: Style.space(42)
         radius: Style.cornerRadius
         visible: root.focusService && root.focusService.active && root.focusService.sessionType === "break"
-        color: btnExtBreakMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.normalFillFor(Color.foreground, Color.accent)
+        color: btnExtBreakMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
         scale: btnExtBreakMouse.pressed ? 0.97 : 1.0
 
         Row {
@@ -676,7 +678,7 @@ Item {
           }
           Text {
             text: "+5m Break"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true

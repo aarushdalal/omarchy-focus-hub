@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.Commons as OmarchyPalette
 import qs.Commons
 import qs.Ui
 
@@ -26,7 +27,7 @@ Item {
         Layout.fillWidth: true
         height: Style.space(100)
         radius: Style.cornerRadius
-        color: Style.normalFillFor(Color.foreground, Color.accent)
+        color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
         ColumnLayout {
           anchors.fill: parent
@@ -42,7 +43,7 @@ Item {
             }
             Text {
               text: "TODAY'S FOCUS TIME"
-              color: Qt.darker(Color.foreground, 1.6)
+              color: Qt.darker(OmarchyPalette.Color.foreground, 1.6)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
               font.bold: true
@@ -54,7 +55,7 @@ Item {
             text: (root.todayMins >= 60)
               ? (Math.floor(root.todayMins / 60) + "h " + (root.todayMins % 60) + "m")
               : (root.todayMins + " mins")
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
             font.family: Style.font.family
             font.pixelSize: Style.font.display
             font.bold: true
@@ -62,7 +63,7 @@ Item {
 
           Text {
             text: "Daily Target: " + (root.dailyGoalMins / 60) + " hours"
-            color: Qt.darker(Color.foreground, 1.8)
+            color: Qt.darker(OmarchyPalette.Color.foreground, 1.8)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption - 1
           }
@@ -74,7 +75,7 @@ Item {
         Layout.fillWidth: true
         height: Style.space(100)
         radius: Style.cornerRadius
-        color: Style.normalFillFor(Color.foreground, Color.accent)
+        color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
         ColumnLayout {
           anchors.fill: parent
@@ -90,7 +91,7 @@ Item {
             }
             Text {
               text: "COMPLETED SPRINTS"
-              color: Qt.darker(Color.foreground, 1.6)
+              color: Qt.darker(OmarchyPalette.Color.foreground, 1.6)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
               font.bold: true
@@ -100,7 +101,7 @@ Item {
 
           Text {
             text: String(root.todaySess) + " sessions"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.display
             font.bold: true
@@ -108,7 +109,7 @@ Item {
 
           Text {
             text: "Consistency is key to mastery"
-            color: Qt.darker(Color.foreground, 1.8)
+            color: Qt.darker(OmarchyPalette.Color.foreground, 1.8)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption - 1
           }
@@ -121,7 +122,7 @@ Item {
       Layout.fillWidth: true
       height: Style.space(80)
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
       ColumnLayout {
         anchors.fill: parent
@@ -132,7 +133,7 @@ Item {
           Layout.fillWidth: true
           Text {
             text: "Daily Goal Progress"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             font.bold: true
@@ -140,7 +141,7 @@ Item {
           Item { Layout.fillWidth: true }
           Text {
             text: Math.min(100, Math.round((root.todayMins / root.dailyGoalMins) * 100)) + "%"
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -151,7 +152,7 @@ Item {
           Layout.fillWidth: true
           height: Style.space(8)
           radius: 4
-          color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.1)
+          color: Qt.rgba(OmarchyPalette.Color.foreground.r, OmarchyPalette.Color.foreground.g, OmarchyPalette.Color.foreground.b, 0.1)
 
           Rectangle {
             anchors.left: parent.left
@@ -159,7 +160,7 @@ Item {
             anchors.bottom: parent.bottom
             width: parent.width * Math.min(1.0, root.todayMins / root.dailyGoalMins)
             radius: 4
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
 
             Behavior on width { NumberAnimation { duration: 300 } }
           }
@@ -172,7 +173,7 @@ Item {
       Layout.fillWidth: true
       Layout.fillHeight: true
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
       RowLayout {
         anchors.fill: parent
@@ -190,7 +191,7 @@ Item {
 
           Text {
             text: "“Action is the foundational key to all success.”"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             font.bold: true
@@ -200,7 +201,7 @@ Item {
 
           Text {
             text: "Deep work produces higher quality results in less time."
-            color: Qt.darker(Color.foreground, 1.6)
+            color: Qt.darker(OmarchyPalette.Color.foreground, 1.6)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -216,7 +217,7 @@ Item {
             width: Style.space(94)
             height: Style.space(30)
             radius: Style.cornerRadius - 3
-            color: testRewardMouse.containsMouse ? Qt.lighter(Color.accent, 1.15) : Color.accent
+            color: testRewardMouse.containsMouse ? Qt.lighter(OmarchyPalette.Color.accent, 1.15) : OmarchyPalette.Color.accent
 
             Row {
               anchors.centerIn: parent
@@ -228,7 +229,7 @@ Item {
               }
               Text {
                 text: "Reward"
-                color: Color.background
+                color: OmarchyPalette.Color.background
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -252,7 +253,7 @@ Item {
             width: Style.space(70)
             height: Style.space(30)
             radius: Style.cornerRadius - 3
-            color: resetStatsMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.selectedFillFor(Color.foreground, Color.accent)
+            color: resetStatsMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
             Row {
               anchors.centerIn: parent
@@ -264,7 +265,7 @@ Item {
               }
               Text {
                 text: "Reset"
-                color: Color.foreground
+                color: OmarchyPalette.Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
