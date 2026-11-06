@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.Commons as OmarchyPalette
 import qs.Commons
+import qs.Commons as OmarchyPalette
 import qs.Ui
 
 Item {
@@ -37,7 +38,9 @@ Item {
           Row {
             spacing: Style.space(6)
             Text {
-              text: "⏱️"
+              text: "󰥔"
+              color: OmarchyPalette.Color.accent
+              font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               anchors.verticalCenter: parent.verticalCenter
             }
@@ -85,7 +88,9 @@ Item {
           Row {
             spacing: Style.space(6)
             Text {
-              text: "🎯"
+              text: "󰄬"
+              color: OmarchyPalette.Color.accent
+              font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               anchors.verticalCenter: parent.verticalCenter
             }
@@ -181,33 +186,38 @@ Item {
         spacing: Style.space(12)
 
         Text {
-          text: "💡"
+          text: "󰌵"
+          color: OmarchyPalette.Color.accent
+          font.family: Style.font.family
           font.pixelSize: Style.font.heading
         }
 
-        Column {
+        ColumnLayout {
           Layout.fillWidth: true
+          Layout.preferredWidth: 0
           spacing: Style.space(4)
 
           Text {
+            Layout.fillWidth: true
             text: "“Action is the foundational key to all success.”"
             color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             font.bold: true
             wrapMode: Text.WordWrap
-            width: Style.space(420)
+            elide: Text.ElideRight
+            maximumLineCount: 2
           }
 
           Text {
+            Layout.fillWidth: true
             text: "Deep work produces higher quality results in less time."
             color: Qt.darker(OmarchyPalette.Color.foreground, 1.6)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
+            elide: Text.ElideRight
           }
         }
-
-        Item { Layout.fillWidth: true }
 
         Row {
           spacing: Style.space(6)
@@ -223,7 +233,9 @@ Item {
               anchors.centerIn: parent
               spacing: Style.space(4)
               Text {
-                text: "🏆"
+                text: "󰄵"
+                color: OmarchyPalette.Color.background
+                font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 anchors.verticalCenter: parent.verticalCenter
               }
@@ -259,7 +271,9 @@ Item {
               anchors.centerIn: parent
               spacing: Style.space(4)
               Text {
-                text: "🔄"
+                text: "󰑐"
+                color: OmarchyPalette.Color.foreground
+                font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 anchors.verticalCenter: parent.verticalCenter
               }

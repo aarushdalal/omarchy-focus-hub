@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.Commons as OmarchyPalette
 import qs.Commons
+import qs.Commons as OmarchyPalette
 import qs.Ui
 
 Item {
@@ -10,8 +10,10 @@ Item {
   property var focusService: null
   property date currentDate: new Date()
   onEnabledChanged: if (enabled) currentDate = new Date()
-  property int customMinutes: 30
+  property int customMinutes: 25
   property string selectedTag: "Deep Study"
+  property string selectedPresetLabel: "Pomodoro Sprint"
+  property string sessionType: "study"
 
   Timer {
     interval: 1000
@@ -40,11 +42,13 @@ Item {
           spacing: Style.space(8)
           Layout.alignment: Qt.AlignVCenter
 
-          Text {
-            text: "󰥔"
-            color: OmarchyPalette.Color.accent
-            font.family: Style.font.family
-            font.pixelSize: Style.font.title
+          Image {
+            source: Qt.resolvedUrl("../assets/focus-hub-symbolic.svg")
+            sourceSize.width: 16
+            sourceSize.height: 16
+            width: 16
+            height: 16
+            fillMode: Image.PreserveAspectFit
             anchors.verticalCenter: parent.verticalCenter
           }
 
@@ -137,14 +141,30 @@ Item {
           Layout.alignment: Qt.AlignHCenter
           spacing: Style.space(8)
 
-          Text {
-            text: (root.focusService && root.focusService.active)
-              ? (root.focusService.sessionType === "break" ? "☕" : "󰑴")
-              : "🎯"
-            color: OmarchyPalette.Color.accent
-            font.family: Style.font.family
-            font.pixelSize: Style.font.heading
+          Item {
+            width: Style.space(22)
+            height: Style.space(22)
             anchors.verticalCenter: parent.verticalCenter
+
+            Image {
+              anchors.fill: parent
+              source: Qt.resolvedUrl("../assets/focus-hub-symbolic.svg")
+              sourceSize.width: Style.space(22)
+              sourceSize.height: Style.space(22)
+              fillMode: Image.PreserveAspectFit
+              visible: !(root.focusService && root.focusService.active)
+            }
+
+            Text {
+              anchors.centerIn: parent
+              visible: root.focusService && root.focusService.active
+              text: (root.focusService && root.focusService.active)
+                ? (root.focusService.sessionType === "break" ? "󰒲" : "󰑴")
+                : ""
+              color: OmarchyPalette.Color.accent
+              font.family: Style.font.family
+              font.pixelSize: Style.font.heading
+            }
           }
 
           Text {
@@ -199,9 +219,9 @@ Item {
             if (root.focusService && root.focusService.active) {
               if (root.focusService.sessionType === "break") {
                 if (root.focusService.pausedStudy) {
-                  return "☕ Break Active • Resuming '" + root.focusService.pausedStudy.label + "' when timer finishes"
+                  return "󰒲 Break Active • Resuming '" + root.focusService.pausedStudy.label + "' when timer finishes"
                 } else {
-                  return "☕ Break Time • Relax & Recharge"
+                  return "󰒲 Break Time • Relax & Recharge"
                 }
               } else {
                 return (Math.round((1.0 - root.focusService.progress) * 100)) + "% focus time left"
@@ -233,7 +253,7 @@ Item {
         spacing: Style.space(8)
 
         Text {
-          text: "⏱️ Custom Time:"
+          text: "󰥔 Custom Time:"
           color: OmarchyPalette.Color.foreground
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
@@ -363,52 +383,39 @@ Item {
 
         Item { Layout.fillWidth: true }
 
-        // Start Custom Session Button
+        // Live Selected Duration Badge
         Rectangle {
-          width: Style.space(120)
-          height: Style.space(32)
+          height: Style.space(28)
+          width: durRow.implicitWidth + Style.space(16)
           radius: Style.cornerRadius - 3
-          color: startCustMouse.containsMouse ? Qt.lighter(OmarchyPalette.Color.accent, 1.12) : OmarchyPalette.Color.accent
-          scale: startCustMouse.pressed ? 0.96 : 1.0
+          color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
           Layout.alignment: Qt.AlignVCenter
 
           Row {
+            id: durRow
             anchors.centerIn: parent
-            spacing: Style.space(6)
+            spacing: Style.space(4)
             Text {
-              text: "󰐊"
-              color: OmarchyPalette.Color.background
+              text: "󰥔"
+              color: OmarchyPalette.Color.accent
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+              anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+              text: root.customMinutes + "m duration"
+              color: OmarchyPalette.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
               anchors.verticalCenter: parent.verticalCenter
-            }
-            Text {
-              text: "Start (" + root.customMinutes + "m)"
-              color: OmarchyPalette.Color.background
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              anchors.verticalCenter: parent.verticalCenter
-            }
-          }
-
-          MouseArea {
-            id: startCustMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: {
-              if (root.focusService) {
-                root.focusService.startSession(root.customMinutes, root.selectedTag + " (" + root.customMinutes + "m)")
-              }
             }
           }
         }
       }
     }
 
-    // Quick Sprint Preset Chips (Borderless)
+    // Quick Sprint Preset Chips (Single Action Selection)
     RowLayout {
       Layout.fillWidth: true
       spacing: Style.space(8)
@@ -426,9 +433,12 @@ Item {
           Layout.fillWidth: true
           height: Style.space(32)
           radius: Style.cornerRadius - 2
-          color: chipMouse.containsMouse
-            ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
-            : Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+          readonly property bool isSelected: root.customMinutes === modelData.mins && root.selectedPresetLabel === modelData.label
+          color: isSelected
+            ? Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+            : (chipMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent))
+          border.color: isSelected ? OmarchyPalette.Color.accent : "transparent"
+          border.width: isSelected ? 1 : 0
           scale: chipMouse.pressed ? 0.96 : (chipMouse.containsMouse ? 1.02 : 1.0)
 
           Behavior on scale { NumberAnimation { duration: 120 } }
@@ -437,10 +447,10 @@ Item {
           Text {
             anchors.centerIn: parent
             text: modelData.label
-            color: chipMouse.containsMouse ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground
+            color: isSelected ? OmarchyPalette.Color.accent : (chipMouse.containsMouse ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
-            font.bold: true
+            font.bold: isSelected || chipMouse.containsMouse
           }
 
           MouseArea {
@@ -449,13 +459,9 @@ Item {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: {
-              if (root.focusService) {
-                if (modelData.type === "break") {
-                  root.focusService.startBreak(modelData.mins)
-                } else {
-                  root.focusService.startSession(modelData.mins, modelData.label)
-                }
-              }
+              root.customMinutes = modelData.mins
+              root.selectedPresetLabel = modelData.label
+              root.sessionType = modelData.type
             }
           }
         }
@@ -465,6 +471,7 @@ Item {
     // Main Bottom Action Buttons (Borderless)
     RowLayout {
       Layout.fillWidth: true
+      Layout.bottomMargin: Style.space(6)
       spacing: Style.space(8)
 
       // Break Active State: Resume Focus (Primary Accent)
@@ -484,7 +491,7 @@ Item {
           spacing: Style.space(8)
 
           Text {
-            text: "▶️"
+            text: "󰐊"
             color: OmarchyPalette.Color.background
             font.family: Style.font.family
             font.pixelSize: Style.font.body
@@ -541,7 +548,7 @@ Item {
           Text {
             text: (root.focusService && root.focusService.active)
               ? "End Study Session"
-              : "Start 25-Min Sprint"
+              : ("Start " + root.selectedPresetLabel + " (" + root.customMinutes + "m)")
             color: (root.focusService && root.focusService.active) ? "#ffffff" : OmarchyPalette.Color.background
             font.family: Style.font.family
             font.pixelSize: Style.font.body
@@ -557,7 +564,13 @@ Item {
           hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
-            if (root.focusService) root.focusService.startSession(25, "Pomodoro Sprint")
+            if (root.focusService) {
+              if (root.sessionType === "break") {
+                root.focusService.startBreak(root.customMinutes)
+              } else {
+                root.focusService.startSession(root.customMinutes, root.selectedPresetLabel)
+              }
+            }
           }
         }
 
@@ -633,7 +646,9 @@ Item {
           spacing: Style.space(6)
 
           Text {
-            text: "☕"
+            text: "󰒲"
+            color: OmarchyPalette.Color.accent
+            font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             anchors.verticalCenter: parent.verticalCenter
           }
@@ -672,7 +687,9 @@ Item {
           anchors.centerIn: parent
           spacing: Style.space(6)
           Text {
-            text: "☕"
+            text: "󰒲"
+            color: OmarchyPalette.Color.accent
+            font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             anchors.verticalCenter: parent.verticalCenter
           }

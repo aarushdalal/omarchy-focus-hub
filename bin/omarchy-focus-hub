@@ -9,6 +9,7 @@ and native Omarchy popup menus.
 
 import sys
 import os
+import re
 import time
 import json
 import fnmatch
@@ -204,7 +205,10 @@ DEFAULT_CONFIG = {
 IMMUNE_PROCESSES = {
     "brave", "brave-bin", "chromium", "chrome", "firefox", "zen", "zen-bin",
     "google-chrome", "foot", "quickshell", "hyprland", "omarchy", "fcitx5",
-    "pipewire", "wireplumber", "easyeffects", "systemd", "dbus-daemon", "waybar"
+    "pipewire", "wireplumber", "easyeffects", "systemd", "dbus-daemon", "waybar",
+    "ghostty", "kitty", "alacritty", "wezterm", "gnome-terminal", "bash", "fish", "zsh", "sh",
+    "python", "python3", "python3.14", "node", "sddm", "antigravity", "agy",
+    "omarchy-study-focus", "focus"
 }
 
 def ensure_dirs():
@@ -470,26 +474,117 @@ def get_process_comm(pid):
         return ""
 
 _last_termination = {}
+_close_attempts = {}
+
+def normalize_app_str(s):
+    if not s:
+        return ""
+    return re.sub(r'[^a-zA-Z0-9]', '', str(s).lower())
+
+def get_domain_keywords(domain):
+    d = str(domain).strip().lower()
+    if not d:
+        return set()
+    if "://" in d:
+        d = d.split("://", 1)[1]
+    d = d.split("/", 1)[0].split(":", 1)[0].strip()
+    d = d.replace("*", "").strip(".")
+    if not d:
+        return set()
+    keywords = {d}
+    if d.startswith("www."):
+        clean = d[4:]
+        keywords.add(clean)
+    else:
+        clean = d
+    parts = clean.split(".")
+    if len(parts) >= 2:
+        if parts[-1] in {"in", "uk", "au", "br", "jp"} and len(parts) >= 3 and parts[-2] in {"co", "com", "org", "gov", "edu"}:
+            base = parts[-3]
+        else:
+            base = parts[-2] if len(parts) >= 2 else parts[0]
+        if len(base) >= 3:
+            keywords.add(base)
+    elif len(clean) >= 3:
+        keywords.add(clean)
+
+    if "github" in clean:
+        keywords.update(["github", "github.com", "github.io", "githubusercontent", "gist.github", "api.github", "raw.githubusercontent"])
+    elif "youtube" in clean or "youtu.be" in clean:
+        keywords.update(["youtube", "youtube.com", "youtu.be", "music.youtube", "ytimg", "googlevideo", "studio.youtube", "youtube-nocookie"])
+    elif "stackoverflow" in clean:
+        keywords.update(["stackoverflow", "stack overflow", "stackexchange"])
+    elif "chatgpt" in clean or "openai" in clean:
+        keywords.update(["chatgpt", "openai"])
+    elif "google" in clean:
+        keywords.update(["google", "google.com", "google.co.in"])
+
+    return keywords
 
 def kill_forbidden_binaries(blocked_binaries):
     # One same-user process snapshot. Exact executable identity and SIGTERM
     # preserve unrelated command lines and application save handling.
-    blocked = {str(value).lower() for value in blocked_binaries} - set(IMMUNE_PROCESSES)
+    cfg = load_config()
+    allowed_apps = cfg.get("allowed_apps", [])
+    allowed_norms = {normalize_app_str(a) for a in allowed_apps if a and len(normalize_app_str(a)) >= 3}
+
+    # Filter out allowed apps and immune processes from blocked binaries
+    blocked = set()
+    for value in blocked_binaries:
+        b_low = str(value).lower().strip()
+        b_norm = normalize_app_str(b_low)
+        if not b_low or b_low in IMMUNE_PROCESSES or b_norm in IMMUNE_PROCESSES:
+            continue
+        if any(b_norm == an or (len(an) >= 3 and (an in b_norm or b_norm in an)) for an in allowed_norms):
+            continue
+        blocked.add(b_low)
+
     now = time.monotonic()
     for proc in Path("/proc").iterdir():
         if not proc.name.isdigit(): continue
         pid = int(proc.name)
-        if pid == os.getpid(): continue
+        if pid == os.getpid() or pid <= 1: continue
         try:
             if proc.stat().st_uid != os.getuid(): continue
             executable = Path(os.readlink(proc / "exe")).name.lower()
-            identity = (pid, (proc / "stat").read_text().rsplit(")", 1)[1].split()[19])
-            if executable not in blocked or now - _last_termination.get(identity, -10) < 10: continue
-            os.kill(pid, signal.SIGTERM)
-            _last_termination[identity] = now
+            if executable in IMMUNE_PROCESSES: continue
+            comm = get_process_comm(pid)
+            if comm in IMMUNE_PROCESSES: continue
+
+            norm_exe = normalize_app_str(executable)
+            norm_comm = normalize_app_str(comm)
+
+            # Never kill allowed apps
+            if any(norm_exe == an or norm_comm == an or (len(an) >= 3 and (an in norm_exe or an in norm_comm or norm_exe in an)) for an in allowed_norms):
+                continue
+
+            blocked_norms = {normalize_app_str(b) for b in blocked}
+            matches = (executable in blocked) or (comm in blocked) or (norm_exe in blocked_norms) or (norm_comm in blocked_norms)
+            if not matches: continue
+
+            stat_line = (proc / "stat").read_text()
+            starttime = stat_line.rsplit(")", 1)[1].split()[19]
+            identity = (pid, starttime)
+
+            last_attempt, sent_sigterm = _last_termination.get(identity, (0, False))
+            elapsed = now - last_attempt
+
+            if not sent_sigterm or elapsed > 10:
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                except OSError:
+                    pass
+                _last_termination[identity] = (now, True)
+            elif elapsed >= 1.5:
+                # Stubborn process refused to terminate with SIGTERM -> escalate to SIGKILL
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except OSError:
+                    pass
+                _last_termination[identity] = (now, True)
         except (OSError, ValueError, IndexError): continue
-    for identity, sent in list(_last_termination.items()):
-        if now - sent > 60: _last_termination.pop(identity, None)
+    for identity, (sent_time, _) in list(_last_termination.items()):
+        if now - sent_time > 60: _last_termination.pop(identity, None)
 
 def is_window_forbidden(win_class, win_initial_class, win_title, allowed_patterns, blocked_patterns, allowed_domains):
     w_class = win_class.lower()
@@ -505,28 +600,81 @@ def is_window_forbidden(win_class, win_initial_class, win_title, allowed_pattern
         "rofi*",
         "wofi*",
         "polkit*",
-        "xdg-desktop-portal*"
+        "xdg-desktop-portal*",
+        "foot*",
+        "ghostty*",
+        "kitty*",
+        "alacritty*",
+        "wezterm*",
+        "antigravity*",
+        "agy*"
     ]
     for pattern in system_allow:
         if fnmatch.fnmatch(w_class, pattern.lower()) or fnmatch.fnmatch(w_init, pattern.lower()):
             return False, "system", "none"
 
-    # 2. Check if explicitly allowed domain is in title/class (e.g. Mission JEET, GitHub, Wikipedia)
-    for dom in allowed_domains:
-        d = dom.replace("*", "").strip().lower()
-        if d and (d in w_class or d in w_title or d.replace(".", " ") in w_title):
-            return False, f"Permitted domain: {dom}", "none"
-
-    is_browser = "brave" in w_class or "chromium" in w_class or "chrome" in w_class or "firefox" in w_class
+    is_browser = any(b in w_class for b in ["brave", "chromium", "chrome", "firefox", "zen"])
     is_pwa = is_browser and ("brave-" in w_class and not w_class.startswith("brave-browser"))
 
-    # 3. Hard Blacklist check
+    # Browser Picture-in-Picture windows are never blocked
+    if is_browser and any(pip in w_title for pip in ["picture-in-picture", "picture in picture", "pip"]):
+        return False, "Browser picture-in-picture", "none"
+
+    # 2. Check if explicitly allowed domain is in title/class (e.g. GitHub, YouTube, etc.)
+    # This allows all sub-windows, popups, and tabs of allowed websites!
+    w_title_norm = normalize_app_str(w_title)
+    for dom in allowed_domains:
+        kws = get_domain_keywords(dom)
+        for kw in kws:
+            if not kw: continue
+            kw_norm = normalize_app_str(kw)
+            if kw in w_title or kw in w_class or kw in w_init or kw.replace(".", " ") in w_title or (len(kw_norm) >= 4 and kw_norm in w_title_norm):
+                return False, f"Permitted domain: {dom}", "none"
+
+    # 3. Whitelist check (Allowed Apps take precedence over Blacklist!)
+    w_norm = normalize_app_str(w_class)
+    w_init_norm = normalize_app_str(w_init)
+    w_class_parts = [normalize_app_str(p) for p in re.split(r'[-_.]', win_class) if len(p) >= 2]
+
+    for pattern in allowed_patterns:
+        pat = pattern.strip().lower()
+        if not pat:
+            continue
+        keyword = pat.replace("*", "").strip()
+        pat_norm = normalize_app_str(pat)
+        if fnmatch.fnmatch(w_class, pat) or fnmatch.fnmatch(w_init, pat):
+            return False, "allowed", "none"
+        if pat_norm and (pat_norm == w_norm or pat_norm == w_init_norm or pat_norm in w_norm or pat_norm in w_init_norm or (len(w_norm) >= 3 and w_norm in pat_norm)):
+            return False, f"Allowed app keyword: {pattern}", "none"
+        if pat_norm and any(pat_norm == part or (len(part) >= 3 and part in pat_norm) or (len(pat_norm) >= 3 and pat_norm in part) for part in w_class_parts):
+            return False, f"Allowed app component: {pattern}", "none"
+        if pat_norm and len(pat_norm) >= 3 and (pat_norm in w_title_norm or w_title_norm.startswith(pat_norm)):
+            return False, f"Allowed app title: {pattern}", "none"
+
+    # 4. Blacklist check (Blocked Patterns & Blocked Domains)
+    # Suppress any blocked pattern that corresponds to an explicitly allowed domain!
+    allowed_kws = set()
+    for dom in allowed_domains:
+        allowed_kws.update(get_domain_keywords(dom))
+
+    effective_blocked_patterns = []
     for pattern in blocked_patterns:
         pat = pattern.strip().lower()
         if not pat:
             continue
-        keyword = pat.replace("*", "")
-        if fnmatch.fnmatch(w_class, pat) or fnmatch.fnmatch(w_init, pat) or keyword in w_class:
+        kw = pat.replace("*", "").strip()
+        kw_norm = normalize_app_str(kw)
+        if kw and any(kw == ak or kw in ak or ak in kw or (len(kw_norm) >= 3 and (kw_norm in normalize_app_str(ak) or normalize_app_str(ak) in kw_norm)) for ak in allowed_kws if len(ak) >= 3):
+            # Explicitly allowed website -> suppress blocked pattern!
+            continue
+        effective_blocked_patterns.append(pattern)
+
+    for pattern in effective_blocked_patterns:
+        pat = pattern.strip().lower()
+        keyword = pat.replace("*", "").strip()
+        if not keyword:
+            continue
+        if fnmatch.fnmatch(w_class, pat) or fnmatch.fnmatch(w_init, pat) or keyword in w_class or keyword in w_init:
             return True, f"Blacklisted app: {pattern}", "window"
         if is_browser and keyword in w_title:
             if is_pwa:
@@ -534,24 +682,50 @@ def is_window_forbidden(win_class, win_initial_class, win_title, allowed_pattern
             else:
                 return True, f"Blacklisted Tab: {w_title}", "tab"
 
-    # 4. Whitelist check
-    for pattern in allowed_patterns:
-        pat = pattern.strip().lower()
-        if not pattern:
-            continue
-        if fnmatch.fnmatch(w_class, pat) or fnmatch.fnmatch(w_init, pat):
-            return False, "allowed", "none"
-
     return True, "Not on study whitelist", "window"
 
 def enforce_close_tab_or_window(address, action_type="window", pid=None):
-    # Tab closure needs browser integration. Global synthetic Ctrl-W can hit
-    # a different application, even after a focus check, so never send it.
-    if action_type == "tab": return False
-    if action_type == "window" and isinstance(address, str) and address.startswith("0x"):
-        result = subprocess.run(["hyprctl", "dispatch", "closewindow", "address:" + address],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
-        return result.returncode == 0
+    now = time.time()
+    for k in list(_close_attempts.keys()):
+        if now - _close_attempts[k]["time"] > 30.0:
+            del _close_attempts[k]
+
+    if action_type == "tab":
+        # Tab closure inside browser windows is handled by browser extension
+        return False
+
+    if action_type == "window":
+        target_key = address or (f"pid:{pid}" if pid else None)
+        if not target_key:
+            return False
+
+        record = _close_attempts.get(target_key, {"count": 0, "first_time": now, "time": now})
+        record["count"] += 1
+        record["time"] = now
+        _close_attempts[target_key] = record
+
+        # 1. Attempt graceful close via Hyprland dispatcher
+        if isinstance(address, str) and address.startswith("0x"):
+            subprocess.run(["hyprctl", "dispatch", "closewindow", "address:" + address],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+
+        # 2. Terminate the process if it's still running, minimizes to tray, or ignores closewindow
+        if pid and pid > 1:
+            comm = get_process_comm(pid)
+            if comm not in IMMUNE_PROCESSES and pid != os.getpid():
+                # On first failure / retry (count >= 2 or after 0.5s), send SIGTERM
+                if record["count"] >= 2 or now - record["first_time"] >= 0.5:
+                    try:
+                        os.kill(pid, signal.SIGTERM)
+                    except OSError:
+                        pass
+                # If window stubbornly refuses to close after 1.5 seconds, escalate to SIGKILL
+                if now - record["first_time"] >= 1.5 and record["count"] >= 4:
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except OSError:
+                        pass
+        return True
     return False
 
 # ==============================================================================
@@ -621,6 +795,13 @@ def run_daemon(duration_seconds, session_type="study", label="Focus Session", pa
     if session_type == "study":
         cfg = load_config()
         kill_forbidden_binaries(cfg.get("blocked_binaries", DEFAULT_BLOCKED_BINARIES))
+        check_and_enforce_windows(
+            cfg.get("allowed_apps", DEFAULT_ALLOWED_APPS),
+            cfg.get("blocked_patterns", DEFAULT_BLOCKED_PATTERNS),
+            cfg.get("allowed_domains", DEFAULT_ALLOWED_DOMAINS),
+            cfg.get("close_blocked_windows", True),
+            blocked_notif_cache
+        )
 
     try:
         while True:
@@ -824,12 +1005,21 @@ def add_allowed_app(pattern):
     if not pattern:
         return
     cfg = load_config()
+    clean = pattern.lower().replace("*", "").strip()
+    norm_clean = normalize_app_str(pattern)
     if pattern not in cfg["allowed_apps"]:
         cfg["allowed_apps"].append(pattern)
-        save_config(cfg)
-        notify("App Permitted", f"Added '{pattern}' to allowed apps list.", glyph="󰄬")
-    else:
-        notify("Already Allowed", f"'{pattern}' is already on the allowed list.", glyph="󰢌")
+    # Remove from blocked_binaries and blocked_patterns to prevent conflict
+    cfg["blocked_binaries"] = [b for b in cfg.get("blocked_binaries", [])
+                               if normalize_app_str(b) != norm_clean
+                               and norm_clean not in normalize_app_str(b)
+                               and normalize_app_str(b) not in norm_clean]
+    cfg["blocked_patterns"] = [p for p in cfg.get("blocked_patterns", [])
+                               if normalize_app_str(p) != norm_clean
+                               and norm_clean not in normalize_app_str(p)
+                               and normalize_app_str(p) not in norm_clean]
+    save_config(cfg)
+    notify("App Permitted", f"Added '{pattern}' to allowed apps list.", glyph="󰄬")
 
 def remove_allowed_app(pattern):
     cfg = load_config()
@@ -845,8 +1035,14 @@ def add_allowed_domain(domain):
     cfg = load_config()
     if domain not in cfg["allowed_domains"]:
         cfg["allowed_domains"].append(domain)
-        save_config(cfg)
-        notify("Website Permitted", f"Added '{domain}' to Permitted Websites.", glyph="󰄬")
+    # Clean from blocked_domains and blocked_patterns
+    keywords = get_domain_keywords(domain)
+    cfg["blocked_domains"] = [d for d in cfg.get("blocked_domains", [])
+                              if d.lower().strip() not in keywords and not any(kw in d.lower() for kw in keywords)]
+    cfg["blocked_patterns"] = [p for p in cfg.get("blocked_patterns", [])
+                               if p.lower().replace("*", "").strip() not in keywords]
+    save_config(cfg)
+    notify("Website Permitted", f"Added '{domain}' to Permitted Websites.", glyph="󰄬")
 
 def remove_allowed_domain(domain):
     cfg = load_config()
@@ -878,8 +1074,12 @@ def allow_current_window():
         notify("No Active Window", "Could not detect active window to allow.", glyph="󰢌")
         return
     w_class = win.get("class") or win.get("initialClass")
+    pid = win.get("pid")
+    comm = get_process_comm(pid) if pid else ""
     if w_class:
         add_allowed_app(w_class)
+        if comm and comm.lower() != w_class.lower() and comm not in IMMUNE_PROCESSES:
+            add_allowed_app(comm)
     else:
         notify("Unable to Identify", "Active window does not have a valid class name.", glyph="󰢌")
 

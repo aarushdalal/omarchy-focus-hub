@@ -22,6 +22,7 @@ BarWidget {
     function close(): void { root.close() }
     function toggle(): void { root.toggle() }
     function status(): string { return JSON.stringify({uiRevision:"minimal-glass-20261102", open:dashboard.open, tab:dashboard.activeTabIndex, surfaceOpacity:dashboard.surfaceOpacity}) }
+    function switchTab(index: int): void { dashboard.activeTabIndex = index; root.open() }
   }
 
   // Popup open/close shape contract for shell/bar
@@ -65,7 +66,7 @@ BarWidget {
 
         Text {
           anchors.centerIn: parent
-          text: focusService.active ? (focusService.sessionType === "break" ? "☕" : "󰑴") : "󰑴"
+          text: focusService.active ? (focusService.sessionType === "break" ? "󰒲" : "󰑴") : "󰑴"
           color: focusService.active ? OmarchyPalette.Color.accent : Qt.darker(root.bar ? root.bar.barForeground : OmarchyPalette.Color.bar.text, 1.4)
           font.family: root.bar ? root.bar.fontFamily : Style.font.family
           font.pixelSize: Style.bar.iconFont

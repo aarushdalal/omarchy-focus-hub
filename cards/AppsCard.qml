@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import qs.Commons as OmarchyPalette
 import qs.Commons
+import qs.Commons as OmarchyPalette
 import qs.Ui
 
 Item {
@@ -54,25 +54,36 @@ Item {
         anchors.leftMargin: Style.space(14)
         anchors.rightMargin: Style.space(10)
 
-        Row {
+        RowLayout {
+          Layout.fillWidth: true
+          Layout.preferredWidth: 0
           spacing: Style.space(10)
           Layout.alignment: Qt.AlignVCenter
 
           Text {
-            text: "🪟"
+            text: "󰖲"
+            color: OmarchyPalette.Color.accent
+            font.family: Style.font.family
             font.pixelSize: Style.font.title
-            anchors.verticalCenter: parent.verticalCenter
+            Layout.alignment: Qt.AlignVCenter
           }
 
-          Column {
-            anchors.verticalCenter: parent.verticalCenter
+          ColumnLayout {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 0
+            spacing: Style.space(2)
+            Layout.alignment: Qt.AlignVCenter
+
             Text {
+              Layout.fillWidth: true
               text: "Currently Focused Window"
               color: Qt.darker(OmarchyPalette.Color.foreground, 1.4)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
+              elide: Text.ElideRight
             }
             Text {
+              Layout.fillWidth: true
               text: (root.focusService && root.focusService.activeWindowClass) ? root.focusService.activeWindowClass : "No active window"
               color: OmarchyPalette.Color.foreground
               font.family: Style.font.family
@@ -98,7 +109,7 @@ Item {
 
           Text {
             anchors.centerIn: parent
-            text: "➕ Allow Window"
+            text: "󰐕 Allow Window"
             color: OmarchyPalette.Color.background
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
@@ -138,7 +149,9 @@ Item {
           spacing: Style.space(6)
 
           Text {
-            text: "🔍"
+            text: "󰍉"
+            color: Qt.darker(OmarchyPalette.Color.foreground, 1.6)
+            font.family: Style.font.family
             font.pixelSize: Style.font.caption
             Layout.alignment: Qt.AlignVCenter
           }
@@ -185,9 +198,10 @@ Item {
 
             Text {
               anchors.centerIn: parent
-              text: root.dropdownOpen ? "▲" : "▼"
+              text: root.dropdownOpen ? "󰅃" : "󰅀"
               color: root.dropdownOpen ? OmarchyPalette.Color.accent : Qt.darker(OmarchyPalette.Color.foreground, 1.4)
-              font.pixelSize: Style.font.caption - 1
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
             }
 
             MouseArea {
@@ -212,7 +226,7 @@ Item {
 
             Text {
               anchors.centerIn: parent
-              text: "➕ Add"
+              text: "󰐕 Add"
               color: OmarchyPalette.Color.background
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
@@ -282,7 +296,9 @@ Item {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "📦"
+                  text: "󰏗"
+                  color: OmarchyPalette.Color.accent
+                  font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   Layout.alignment: Qt.AlignVCenter
                 }
@@ -307,7 +323,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 Text {
-                  text: "➕ Allow"
+                  text: "󰐕 Allow"
                   color: OmarchyPalette.Color.accent
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption - 1
@@ -351,7 +367,7 @@ Item {
         Row {
           spacing: Style.space(6)
           Text {
-            text: "📱 Permitted Study Applications"
+            text: "󰀻 Permitted Study Applications"
             color: OmarchyPalette.Color.accent
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
@@ -366,14 +382,37 @@ Item {
         }
 
         Flickable {
+          id: appsFlickable
           Layout.fillWidth: true
           Layout.fillHeight: true
-          contentHeight: appsFlow.implicitHeight
+          contentHeight: appsFlow.implicitHeight + Style.space(28)
           boundsBehavior: Flickable.StopAtBounds
+          clip: true
+          flickableDirection: Flickable.VerticalFlick
+
+          ScrollBar.vertical: ScrollBar {
+            policy: ScrollBar.AsNeeded
+            active: true
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            onWheel: function(wheel) {
+              if (appsFlickable.contentHeight > appsFlickable.height) {
+                var step = 48
+                var delta = (wheel.angleDelta.y !== 0) ? wheel.angleDelta.y : wheel.pixelDelta.y * 4
+                appsFlickable.contentY = Math.max(0, Math.min(appsFlickable.contentY - (delta / 120) * step, appsFlickable.contentHeight - appsFlickable.height))
+                wheel.accepted = true
+              } else {
+                wheel.accepted = false
+              }
+            }
+          }
 
           Flow {
             id: appsFlow
-            width: parent.width
+            width: parent.width - Style.space(8)
             spacing: Style.space(6)
 
             Repeater {
@@ -400,7 +439,7 @@ Item {
                   }
 
                   Text {
-                    text: "✕"
+                    text: "󰅖"
                     color: remAppMouse.containsMouse ? "#ff4455" : Qt.darker(OmarchyPalette.Color.foreground, 1.6)
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption - 1

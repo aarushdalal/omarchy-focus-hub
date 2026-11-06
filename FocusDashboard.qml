@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as OmarchyPalette
 import qs.Ui
 import "components/polish" as Polish
 import "cards"
@@ -18,7 +19,7 @@ Polish.RefinedKeyboardPanel {
   }
 
   contentWidth: Style.space(560)
-  contentHeight: Style.space(438)
+  contentHeight: Style.space(488)
   borderSpec: Border.none()
   focusTarget: mainCanvas
 
@@ -32,7 +33,9 @@ Polish.RefinedKeyboardPanel {
   property real lastTriggerTime: 0
   readonly property real wheelThreshold: 20
 
-  function handleWheel(wheelOrDelta) {
+  function handleWheel(wheelOrDelta, allowVertical) {
+    if (!root.open) return
+    if (allowVertical === undefined) allowVertical = true
     var now = Date.now()
     var dy = 0
     var dx = 0
@@ -52,6 +55,11 @@ Polish.RefinedKeyboardPanel {
 
     if (dy === 0 && dx === 0) return
 
+    // If vertical is not allowed (over scrollable content cards), require horizontal dominance
+    if (!allowVertical && Math.abs(dx) < Math.abs(dy)) {
+      return
+    }
+
     // Reset accumulator on finger lift / pause (> 220ms)
     if (now - lastWheelEventTime > 220) {
       wheelAccumulator = 0
@@ -63,7 +71,7 @@ Polish.RefinedKeyboardPanel {
       return
     }
 
-    var dominant = Math.abs(dx) > Math.abs(dy) ? dx : dy
+    var dominant = (allowVertical && Math.abs(dy) > Math.abs(dx)) ? dy : dx
     wheelAccumulator += dominant
 
     if (wheelAccumulator >= wheelThreshold) {
@@ -77,12 +85,12 @@ Polish.RefinedKeyboardPanel {
     }
   }
 
-  // MouseArea at root of panel for frictionless scroll detection
+  // MouseArea at root of panel for mouse wheel and horizontal swipe tab navigation
   MouseArea {
     anchors.fill: parent
     acceptedButtons: Qt.NoButton
     onWheel: function(wheel) {
-      root.handleWheel(wheel)
+      root.handleWheel(wheel, true)
     }
   }
 
@@ -91,6 +99,15 @@ Polish.RefinedKeyboardPanel {
     id: mainCanvas
     anchors.fill: parent
     focus: true
+
+    WheelHandler {
+      id: canvasWheelHandler
+      target: mainCanvas
+      acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+      onWheel: function(event) {
+        root.handleWheel(event, true)
+      }
+    }
 
     Keys.onPressed: function(event) {
       if (event.key === Qt.Key_Escape) root.close()
@@ -110,8 +127,8 @@ Polish.RefinedKeyboardPanel {
       motionEnabled: root.open
       tabs: [
         { icon: "󰑴", label: "Focus", index: 0 },
-        { icon: "🌐", label: "Websites", index: 1 },
-        { icon: "📱", label: "Apps", index: 2 },
+        { icon: "󰖟", label: "Websites", index: 1 },
+        { icon: "󰀻", label: "Apps", index: 2 },
         { icon: "󰠵", label: "Ambience", index: 3 },
         { icon: "󰄬", label: "Stats", index: 4 }
       ]

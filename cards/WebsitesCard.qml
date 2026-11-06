@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import qs.Commons as OmarchyPalette
 import qs.Commons
+import qs.Commons as OmarchyPalette
 import qs.Ui
 
 Item {
@@ -31,7 +31,9 @@ Item {
           Layout.alignment: Qt.AlignVCenter
 
           Text {
-            text: (root.focusService && root.focusService.strictWhitelist) ? "🔒" : "🌐"
+            text: (root.focusService && root.focusService.strictWhitelist) ? "󰌾" : "󰖟"
+            color: OmarchyPalette.Color.accent
+            font.family: Style.font.family
             font.pixelSize: Style.font.body
             anchors.verticalCenter: parent.verticalCenter
           }
@@ -124,7 +126,7 @@ Item {
 
           Text {
             anchors.centerIn: parent
-            text: "➕ Add"
+            text: "󰐕 Add"
             color: OmarchyPalette.Color.background
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
@@ -178,14 +180,36 @@ Item {
         }
 
         Flickable {
+          id: domainsFlickable
           Layout.fillWidth: true
           Layout.fillHeight: true
           contentHeight: domainsFlow.implicitHeight
           boundsBehavior: Flickable.StopAtBounds
+          clip: true
+          flickableDirection: Flickable.VerticalFlick
+
+          ScrollBar.vertical: ScrollBar {
+            policy: ScrollBar.AsNeeded
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            onWheel: function(wheel) {
+              if (domainsFlickable.contentHeight > domainsFlickable.height) {
+                var step = 48
+                var delta = (wheel.angleDelta.y !== 0) ? wheel.angleDelta.y : wheel.pixelDelta.y * 4
+                domainsFlickable.contentY = Math.max(0, Math.min(domainsFlickable.contentY - (delta / 120) * step, domainsFlickable.contentHeight - domainsFlickable.height))
+                wheel.accepted = true
+              } else {
+                wheel.accepted = false
+              }
+            }
+          }
 
           Flow {
             id: domainsFlow
-            width: parent.width
+            width: parent.width - Style.space(8)
             spacing: Style.space(6)
 
             Repeater {
@@ -212,7 +236,7 @@ Item {
                   }
 
                   Text {
-                    text: "✕"
+                    text: "󰅖"
                     color: removeMouse.containsMouse ? "#ff4455" : Qt.darker(OmarchyPalette.Color.foreground, 1.6)
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption - 1
@@ -229,6 +253,68 @@ Item {
                       }
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+
+        // Quick Allow Study Platforms (Fills space cleanly)
+        Rectangle {
+          Layout.fillWidth: true
+          height: 1
+          color: Qt.darker(OmarchyPalette.Color.foreground, 2.5)
+        }
+
+        Row {
+          spacing: Style.space(6)
+          Text {
+            text: "󰐕 Quick Allow Study Platforms"
+            color: OmarchyPalette.Color.accent
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+            font.bold: true
+          }
+        }
+
+        Flow {
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+
+          Repeater {
+            model: [
+              "arxiv.org", "stackoverflow.com", "developer.mozilla.org",
+              "docs.rs", "chatgpt.com", "scholar.google.com", "notion.so"
+            ]
+
+            Rectangle {
+              height: Style.space(26)
+              width: recRow.implicitWidth + Style.space(12)
+              radius: Style.cornerRadius - 3
+              readonly property bool isAdded: root.focusService && root.focusService.allowedDomains && root.focusService.allowedDomains.indexOf(modelData) !== -1
+              visible: !isAdded
+              color: recMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+
+              Row {
+                id: recRow
+                anchors.centerIn: parent
+                spacing: Style.space(4)
+                Text {
+                  text: "+ " + modelData
+                  color: recMouse.containsMouse ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.caption - 1
+                  font.bold: true
+                }
+              }
+
+              MouseArea {
+                id: recMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  if (root.focusService) root.focusService.addAllowedDomain(modelData)
                 }
               }
             }

@@ -5,6 +5,7 @@
   "version": "1.2.0",
   "author": "Daemon0",
   "description": "Interactive study session controller, focus timer, and optional distraction manager",
+  "icon": "assets/focus-hub.svg",
   "kinds": [
     "bar-widget"
   ],

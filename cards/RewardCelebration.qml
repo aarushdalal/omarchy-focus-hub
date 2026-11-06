@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-import qs.Commons as OmarchyPalette
 import qs.Commons
+import qs.Commons as OmarchyPalette
 import qs.Ui
 
 Item {
@@ -27,7 +27,7 @@ Item {
   }
 
   function playRewardSound() {
-    var soundPath = Quickshell.env("HOME") + "/.config/omarchy/plugins/daemon0.focus-hub/sounds/reward.wav"
+    var soundPath = Quickshell.env("HOME") + "/.config/omarchy/plugins/daemon0.study-focus/sounds/reward.wav"
     soundProc.command = ["pw-play", soundPath]
     soundProc.running = true
   }
@@ -158,8 +158,9 @@ Item {
         }
 
         Text {
-          text: "★"
+          text: "󰓎"
           color: particle.pColor
+          font.family: Style.font.family
           font.pixelSize: 13
           visible: particle.pType === "star"
           anchors.centerIn: parent
@@ -234,7 +235,9 @@ Item {
 
         Text {
           anchors.centerIn: parent
-          text: "🏆"
+          text: "󰄵"
+          color: "#FFD700"
+          font.family: Style.font.family
           font.pixelSize: Style.space(38)
         }
       }
@@ -246,7 +249,7 @@ Item {
 
         Text {
           anchors.horizontalCenter: parent.horizontalCenter
-          text: "🎉 SPRINT COMPLETED!"
+          text: "󰄬 SPRINT COMPLETED!"
           color: "#FFD700"
           font.family: Style.font.family
           font.pixelSize: Style.font.title
@@ -276,7 +279,7 @@ Item {
           anchors.rightMargin: Style.space(12)
 
           Text {
-            text: "🎯 " + root.rewardLabel
+            text: "󰓅 " + root.rewardLabel
             color: OmarchyPalette.Color.accent
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
@@ -286,7 +289,7 @@ Item {
           }
 
           Text {
-            text: "📈 Today: " + (root.focusService ? root.focusService.todayMinutes : 0) + "m"
+            text: "󰄉 Today: " + (root.focusService ? root.focusService.todayMinutes : 0) + "m"
             color: Qt.darker(OmarchyPalette.Color.foreground, 1.3)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption

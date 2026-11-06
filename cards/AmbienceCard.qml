@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
-import qs.Commons as OmarchyPalette
 import qs.Commons
+import qs.Commons as OmarchyPalette
 import qs.Ui
 
 Item {
@@ -95,9 +95,9 @@ Item {
 
           Repeater {
             model: [
-              { id: "rain", label: "🌧️ Deep Rain", icon: "🌧️" },
-              { id: "whitenoise", label: "🌊 Brown Noise", icon: "🌊" },
-              { id: "binaural", label: "🧘 Alpha Waves", icon: "🧘" }
+              { id: "rain", label: "󰖗 Deep Rain", icon: "󰖗" },
+              { id: "whitenoise", label: "󰝚 Brown Noise", icon: "󰝚" },
+              { id: "binaural", label: "󰠵 Alpha Waves", icon: "󰠵" }
             ]
 
             Rectangle {
@@ -153,23 +153,28 @@ Item {
           anchors.fill: parent
           anchors.margins: Style.space(14)
 
-          Column {
+          ColumnLayout {
             Layout.fillWidth: true
+            Layout.preferredWidth: 0
             spacing: Style.space(4)
             Text {
-              text: "🔔 Sound Chimes"
+              Layout.fillWidth: true
+              text: "󰂚 Sound Chimes"
               color: OmarchyPalette.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               font.bold: true
+              elide: Text.ElideRight
             }
             Text {
+              Layout.fillWidth: true
               text: "Play audio alert when session starts or blocked site is opened"
               color: Qt.darker(OmarchyPalette.Color.foreground, 1.5)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
               wrapMode: Text.WordWrap
-              width: Style.space(170)
+              elide: Text.ElideRight
+              maximumLineCount: 2
             }
           }
 
@@ -210,23 +215,28 @@ Item {
           anchors.fill: parent
           anchors.margins: Style.space(14)
 
-          Column {
+          ColumnLayout {
             Layout.fillWidth: true
+            Layout.preferredWidth: 0
             spacing: Style.space(4)
             Text {
-              text: "🔕 Focus Mode Shield"
+              Layout.fillWidth: true
+              text: "󰄲 Focus Mode Shield"
               color: OmarchyPalette.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               font.bold: true
+              elide: Text.ElideRight
             }
             Text {
+              Layout.fillWidth: true
               text: "Non-permitted apps & websites automatically restricted"
               color: Qt.darker(OmarchyPalette.Color.foreground, 1.5)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
               wrapMode: Text.WordWrap
-              width: Style.space(170)
+              elide: Text.ElideRight
+              maximumLineCount: 2
             }
           }
 
